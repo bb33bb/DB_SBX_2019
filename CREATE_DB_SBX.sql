@@ -133,42 +133,6 @@ USE DB_SBX
 	FOREIGN KEY(Salida_para) REFERENCES SalidaPara(Codigo) ON DELETE CASCADE
 	)
 	GO
-	CREATE TABLE Kardex(
-	Codigo INT IDENTITY(1,1) PRIMARY KEY,
-	CodigoVenta INT,
-	Item INT,
-	Referencia VARCHAR(20),
-	Nombre VARCHAR(200),
-	Descripcion VARCHAR(200),
-	IVA FLOAT,
-	UnidadMedida VARCHAR(200),
-	Medida FLOAT,
-	Estado INT,
-	Categoria VARCHAR(200),
-	Marca VARCHAR(200),
-	DNIproveedor VARCHAR(50),
-	Proveedor VARCHAR(200),
-	ModoVenta VARCHAR(10),
-	Ubicacion VARCHAR(200) NOT NULL,
-	Salida_para VARCHAR(200) NOT NULL,
-	Stock_minimo INT NOT NULL,
-	Stock_maximo INT NOT NULL,
-	Cantidad FLOAT NOT NULL,
-	Costo MONEY,
-	PrecioVenta MONEY,
-	CodigoBarras VARCHAR(100),
-	SubCantidad FLOAT,
-	ValorSubcantidad MONEY,
-	Sobres INT,
-	ValorSobre MONEY,
-	Usuario INT,
-	FechaRegistro DATETIME,
-	Accion VARCHAR(100),
-	movimiento VARCHAR(100),
-	UM VARCHAR(20),
-	FOREIGN KEY(Item) REFERENCES Producto(Item) ON DELETE CASCADE
-	)
-	GO
 		CREATE TABLE Bit_Kardex(
 	Codigo INT IDENTITY(1,1) PRIMARY KEY,
 	Fecha DATETIME,
@@ -265,14 +229,50 @@ USE DB_SBX
 	FOREIGN KEY(SistemaSeparado) REFERENCES SistemaSeparado(Codigo) ON DELETE CASCADE
 	)
 	GO
+	CREATE TABLE Kardex(
+	Codigo INT IDENTITY(1,1) PRIMARY KEY,
+	CodigoVenta INT,
+	Item INT,
+	Referencia VARCHAR(20),
+	Nombre VARCHAR(200),
+	Descripcion VARCHAR(200),
+	IVA FLOAT,
+	UnidadMedida VARCHAR(200),
+	Medida FLOAT,
+	Estado INT,
+	Categoria VARCHAR(200),
+	Marca VARCHAR(200),
+	DNIproveedor VARCHAR(50),
+	Proveedor VARCHAR(200),
+	ModoVenta VARCHAR(10),
+	Ubicacion VARCHAR(200) NOT NULL,
+	Salida_para VARCHAR(200) NOT NULL,
+	Stock_minimo INT NOT NULL,
+	Stock_maximo INT NOT NULL,
+	Cantidad FLOAT NOT NULL,
+	Costo MONEY,
+	PrecioVenta MONEY,
+	CodigoBarras VARCHAR(100),
+	SubCantidad FLOAT,
+	ValorSubcantidad MONEY,
+	Sobres INT,
+	ValorSobre MONEY,
+	Usuario INT,
+	FechaRegistro DATETIME,
+	Accion VARCHAR(100),
+	movimiento VARCHAR(100),
+	UM VARCHAR(20),
+	FOREIGN KEY(Item) REFERENCES Producto(Item) ON DELETE CASCADE
+	)
+	GO
 	CREATE TRIGGER tr_Venta_insert on Venta
 	FOR INSERT
 	AS
 	BEGIN
-	INSERT INTO Kardex (Item,Referencia,Nombre,Descripcion,IVA,UnidadMedida,Medida,Estado,Categoria,Marca,DNIproveedor,Proveedor,
+	INSERT INTO Kardex (CodigoVenta,Item,Referencia,Nombre,Descripcion,IVA,UnidadMedida,Medida,Estado,Categoria,Marca,DNIproveedor,Proveedor,
 	ModoVenta,Cantidad,Costo,PrecioVenta,CodigoBarras,SubCantidad,ValorSubcantidad,Sobres,ValorSobre,Usuario,FechaRegistro,
 	Accion,movimiento,Ubicacion,Salida_para,Stock_minimo,Stock_maximo,UM)
-	SELECT p.Item,p.Referencia,p.Nombre,p.Descripcion,v.IVA,um.Nombre,p.Medida,0,ct.Nombre,
+	SELECT v.Codigo,p.Item,p.Referencia,p.Nombre,p.Descripcion,v.IVA,um.Nombre,p.Medida,0,ct.Nombre,
 	m.Nombre,pr.DNI,pr.Nombre,p.ModoVenta,v.Cantidad,v.Costo,v.PrecioVenta,p.CodigoBarras,
 	p.SubCantidad,p.ValorSubcantidad,p.Sobres,p.ValorSobre,v.Usuario,SYSDATETIME(),'INSERT-VENTA','Salida -',
 	p.Ubicacion,p.Salida_para,p.Stock_minimo,p.Stock_maximo,v.UM
@@ -282,7 +282,7 @@ USE DB_SBX
 	INNER JOIN Categoria ct ON ct.Codigo = p.Categoria
 	INNER JOIN Marca m ON m.Codigo = p.Marca
 	INNER JOIN Proveedor pr ON pr.DNI = p.Proveedor
-	WHERE v.Fecha = (SELECT MAX(Fecha) FROM Venta)
+	WHERE v.Codigo = (SELECT MAX(Codigo) FROM Venta)
 	END
 	GO
 	CREATE TRIGGER tr_reset_item on Producto
@@ -310,10 +310,19 @@ USE DB_SBX
 	BEGIN
 	INSERT INTO Kardex (Item,Referencia,Nombre,Descripcion,IVA,UnidadMedida,Medida,Estado,Categoria,Marca,DNIproveedor,Proveedor,
 	ModoVenta,Cantidad,Costo,PrecioVenta,CodigoBarras,SubCantidad,ValorSubcantidad,Sobres,ValorSobre,Usuario,FechaRegistro,
-	Accion,movimiento,Ubicacion,Salida_para,Stock_minimo,Stock_maximo)
+	Accion,movimiento,Ubicacion,Salida_para,Stock_minimo,Stock_maximo,UM)
 	SELECT p.Item,p.Referencia,p.Nombre,P.Descripcion,p.IVA,um.Nombre,p.Medida,p.Estado,ct.Nombre,m.Nombre,pr.DNI,pr.Nombre,
 	p.ModoVenta,p.Cantidad,p.Costo,p.PrecioVenta,p.CodigoBarras,p.SubCantidad,p.ValorSubcantidad,p.Sobres,p.ValorSobre,
-	p.Usuario,SYSDATETIME(),'INSERT-INVENTARIO',p.movimiento,p.Ubicacion,p.Salida_para,p.Stock_minimo,p.Stock_maximo
+	p.Usuario,SYSDATETIME(),'INSERT-INVENTARIO',p.movimiento,p.Ubicacion,p.Salida_para,p.Stock_minimo,p.Stock_maximo,
+	CASE WHEN ModoVenta = 'Unidad' THEN
+		'UND'
+		ELSE
+		CASE WHEN ModoVenta = 'Pesaje' THEN
+		'Bulto'
+		ELSE
+		'Caja'
+		END
+	END
 	FROM Producto p
 	INNER JOIN UnidadMedida um ON um.Codigo = p.UnidadMedida
 	INNER JOIN Categoria ct ON ct.Codigo = p.Categoria
@@ -342,373 +351,204 @@ USE DB_SBX
 	GO
 	--Creacion de procedimientos almacenados
 	CREATE PROC sp_consultar_productos_kardex
-	@v_tipo_busqueda AS VARCHAR(MAX),
+@v_tipo_busqueda AS VARCHAR(MAX),
 @v_buscar AS VARCHAR(MAX)
 AS
-DECLARE @TABLA TABLE(Item INT,Referencia VARCHAR(max),CodigoBarras VARCHAR(max),Nombre VARCHAR(max),Descripcion VARCHAR(max),
-ModoVenta VARCHAR(max),UM VARCHAR(max),Stock FLOAT,StockSubcantidad FLOAT,StockSobres FLOAT,Costo MONEY,PrecioVenta MONEY,
-CostoSubCantidad MONEY,PrecioVentaSubCantidad MONEY,CostoSobre MONEY,PrecioVentaSobre MONEY,
-IVA FLOAT,UnidadMedida VARCHAR(max),Categoria VARCHAR(max),
-Marca VARCHAR(max),Ubicacion VARCHAR(max),Salida_para VARCHAR(max),DNIproveedor VARCHAR(max),Proveedor VARCHAR(max),
-Stock_minimo INT,Stock_maximo INT)
-INSERT INTO @TABLA (Item,Referencia,CodigoBarras,Nombre,Descripcion ,
-ModoVenta,UM ,Stock ,StockSubcantidad ,StockSobres ,Costo ,PrecioVenta ,
-CostoSubCantidad ,PrecioVentaSubCantidad ,CostoSobre ,PrecioVentaSobre ,
-IVA ,UnidadMedida ,Categoria ,
-Marca ,Ubicacion ,Salida_para ,DNIproveedor ,Proveedor ,
-Stock_minimo ,Stock_maximo)
-SELECT k.Item,k.Referencia,k.CodigoBarras,k.Nombre,k.Descripcion,k.ModoVenta,
-CASE WHEN k.ModoVenta = 'Unidad' THEN
-ISNULL(k.UM,'UND')
-ELSE
-CASE WHEN k.ModoVenta = 'Pesaje' THEN
-ISNULL(k.UM,'Bulto')
-ELSE
-CASE WHEN k.ModoVenta = 'Multi' THEN
-ISNULL(k.UM,'Caja')
-END
-END
-END UM,
- ISNULL(CASE WHEN k.ModoVenta = 'Unidad' THEN
-	(SELECT SUM(k1.Cantidad) FROM Kardex k1 
-	WHERE (k1.ModoVenta = 'Unidad' AND k1.movimiento = 'Entrada +') AND K1.Item = K.Item)
-	-
-	(SELECT SUM(k1.Cantidad) FROM Kardex k1 
-	WHERE (k1.ModoVenta = 'Unidad' AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-ELSE
-	CASE WHEN k.ModoVenta = 'Pesaje' THEN
-		(SELECT SUM(k1.Cantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Pesaje' AND (K.UM IS NULL OR K.UM = 'Bulto')) AND k1.movimiento = 'Entrada +') AND K1.Item = K.Item)
-		-
-		((SELECT SUM(k1.Cantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Pesaje' AND K1.UM = 'Bulto') AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-		+
-		(SELECT SUM(k1.Cantidad/k1.SubCantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Pesaje' AND (K1.UM != 'Bulto' OR K1.UM != NULL)) AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-		)
-	ELSE
-	CASE WHEN k.ModoVenta = 'Multi' THEN
-		(SELECT SUM(k1.Cantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Multi' AND (K.UM IS NULL OR K.UM = 'Caja')) AND k1.movimiento = 'Entrada +') AND K1.Item = K.Item)
-		-
-		((SELECT SUM(k1.Cantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Multi' AND K1.UM = 'Caja') AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-		+
-		(SELECT SUM(k1.Cantidad/k1.SubCantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Multi' AND (K1.UM = 'UND P' OR K1.UM != NULL)) AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-		+
-		(SELECT SUM((k1.Cantidad * (k1.SubCantidad/K1.Sobres))/K1.SubCantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Multi' AND (K1.UM = 'Sobre' OR K1.UM != NULL)) AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-		)
-	END
-	END	
-	END,0) stock,
-	ISNULL(
-	CASE WHEN k.ModoVenta = 'Pesaje' THEN
-	(
-	ISNULL( CASE WHEN k.ModoVenta = 'Unidad' THEN
-		(SELECT SUM(k1.Cantidad) FROM Kardex k1 
-		WHERE (k1.ModoVenta = 'Unidad' AND k1.movimiento = 'Entrada +') AND K1.Item = K.Item)
-		-
-		(SELECT SUM(k1.Cantidad) FROM Kardex k1 
-		WHERE (k1.ModoVenta = 'Unidad' AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-	ELSE
-	CASE WHEN k.ModoVenta = 'Pesaje' THEN
-		(SELECT SUM(k1.Cantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Pesaje' AND (K.UM IS NULL OR K.UM = 'Bulto')) AND k1.movimiento = 'Entrada +') AND K1.Item = K.Item)
-		-
-		((SELECT SUM(k1.Cantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Pesaje' AND K1.UM = 'Bulto') AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-		+
-		(SELECT SUM(k1.Cantidad/k1.SubCantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Pesaje' AND (K1.UM != 'Bulto' OR K1.UM != NULL)) AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-		)
-	ELSE
-	CASE WHEN k.ModoVenta = 'Multi' THEN
-		(SELECT SUM(k1.Cantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Multi' AND (K.UM IS NULL OR K.UM = 'Caja')) AND k1.movimiento = 'Entrada +') AND K1.Item = K.Item)
-		-
-		((SELECT SUM(k1.Cantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Multi' AND K1.UM = 'Caja') AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-		+
-		(SELECT SUM(k1.Cantidad/k1.SubCantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Multi' AND (K1.UM = 'UND P' OR K1.UM != NULL)) AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-		+
-		(SELECT SUM((k1.Cantidad * (k1.SubCantidad/K1.Sobres))/K1.SubCantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Multi' AND (K1.UM = 'Sobre' OR K1.UM != NULL)) AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-		)
-	END
-	END	
-	END,0)
-	)
-	*
-	(SELECT K1.SubCantidad FROM Kardex k1 
-	WHERE ((k1.ModoVenta = 'Pesaje' AND (K.UM IS NULL OR K.UM = 'Bulto')) AND k1.movimiento = 'Entrada +') AND K1.Item = K.Item)
-ELSE
-CASE WHEN k.ModoVenta = 'Multi' THEN
-		(
-	ISNULL( CASE WHEN k.ModoVenta = 'Unidad' THEN
-		(SELECT SUM(k1.Cantidad) FROM Kardex k1 
-		WHERE (k1.ModoVenta = 'Unidad' AND k1.movimiento = 'Entrada +') AND K1.Item = K.Item)
-		-
-		(SELECT SUM(k1.Cantidad) FROM Kardex k1 
-		WHERE (k1.ModoVenta = 'Unidad' AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-	ELSE
-	CASE WHEN k.ModoVenta = 'Pesaje' THEN
-		(SELECT SUM(k1.Cantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Pesaje' AND (K.UM IS NULL OR K.UM = 'Bulto')) AND k1.movimiento = 'Entrada +') AND K1.Item = K.Item)
-		-
-		((SELECT SUM(k1.Cantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Pesaje' AND K1.UM = 'Bulto') AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-		+
-		(SELECT SUM(k1.Cantidad/k1.SubCantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Pesaje' AND (K1.UM != 'Bulto' OR K1.UM != NULL)) AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-		)
-	ELSE
-	CASE WHEN k.ModoVenta = 'Multi' THEN
-		(SELECT SUM(k1.Cantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Multi' AND (K.UM IS NULL OR K.UM = 'Caja')) AND k1.movimiento = 'Entrada +') AND K1.Item = K.Item)
-		-
-		((SELECT SUM(k1.Cantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Multi' AND K1.UM = 'Caja') AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-		+
-		(SELECT SUM(k1.Cantidad/k1.SubCantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Multi' AND (K1.UM = 'UND P' OR K1.UM != NULL)) AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-		+
-		(SELECT SUM((k1.Cantidad * (k1.SubCantidad/K1.Sobres))/K1.SubCantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Multi' AND (K1.UM = 'Sobre' OR K1.UM != NULL)) AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-		)
-	END
-	END	
-	END,0)
-	)
-	*
-	(SELECT K1.SubCantidad FROM Kardex k1 
-	WHERE (((k1.ModoVenta = 'Multi' AND (K.UM IS NULL OR K.UM = 'Caja')) AND k1.movimiento = 'Entrada +') AND K1.Item = K.Item)
-	AND k1.Codigo = 
-	(
-	(SELECT MAX(K1.Codigo) FROM Kardex k1 
-	WHERE (((k1.ModoVenta = 'Multi' AND (K.UM IS NULL OR K.UM = 'Caja')) AND k1.movimiento = 'Entrada +') AND K1.Item = K.Item)
-	)	
-	)
-	)
-END
-END,0) StockSubcantidad,
-ISNULL(
-CASE WHEN k.ModoVenta = 'Multi' THEN
-	(ISNULL( CASE WHEN k.ModoVenta = 'Unidad' THEN
-	(SELECT SUM(k1.Cantidad) FROM Kardex k1 
-	WHERE (k1.ModoVenta = 'Unidad' AND k1.movimiento = 'Entrada +') AND K1.Item = K.Item)
-	-
-	(SELECT SUM(k1.Cantidad) FROM Kardex k1 
-	WHERE (k1.ModoVenta = 'Unidad' AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-ELSE
-	CASE WHEN k.ModoVenta = 'Pesaje' THEN
-		(SELECT SUM(k1.Cantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Pesaje' AND (K.UM IS NULL OR K.UM = 'Bulto')) AND k1.movimiento = 'Entrada +') AND K1.Item = K.Item)
-		-
-		((SELECT SUM(k1.Cantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Pesaje' AND K1.UM = 'Bulto') AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-		+
-		(SELECT SUM(k1.Cantidad/k1.SubCantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Pesaje' AND (K1.UM != 'Bulto' OR K1.UM != NULL)) AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-		)
-	ELSE
-	CASE WHEN k.ModoVenta = 'Multi' THEN
-		(SELECT SUM(k1.Cantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Multi' AND (K.UM IS NULL OR K.UM = 'Caja')) AND k1.movimiento = 'Entrada +') AND K1.Item = K.Item)
-		-
-		((SELECT SUM(k1.Cantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Multi' AND K1.UM = 'Caja') AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-		+
-		(SELECT SUM(k1.Cantidad/k1.SubCantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Multi' AND (K1.UM = 'UND P' OR K1.UM != NULL)) AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-		+
-		(SELECT SUM((k1.Cantidad * (k1.SubCantidad/K1.Sobres))/K1.SubCantidad) FROM Kardex k1 
-		WHERE ((k1.ModoVenta = 'Multi' AND (K1.UM = 'Sobre' OR K1.UM != NULL)) AND k1.movimiento = 'Salida -') AND K1.Item = K.Item)
-		)
-	END
-	END	
-	END,0))
-	*
-	(SELECT K1.Sobres FROM Kardex k1 
-	WHERE (((k1.ModoVenta = 'Multi' AND (K.UM IS NULL OR K.UM = 'Caja')) AND k1.movimiento = 'Entrada +') AND K1.Item = K.Item)
-	AND k1.Codigo = 
-	(
-	(SELECT MAX(K1.Codigo) FROM Kardex k1 
-	WHERE (((k1.ModoVenta = 'Multi' AND (K.UM IS NULL OR K.UM = 'Caja')) AND k1.movimiento = 'Entrada +') AND K1.Item = K.Item)
-	)	
-	)
-	)
-END,0) StockSobres,
-CASE WHEN k.ModoVenta = 'Unidad' THEN
-(SELECT costo FROM Kardex WHERE (Codigo = (SELECT MAX(codigo) FROM Kardex WHERE Item = k.Item)) AND ModoVenta = 'Unidad')
-ELSE
-CASE WHEN k.ModoVenta = 'Pesaje' AND (K.UM = 'Bulto' OR k.UM IS NULL) THEN
-	CASE WHEN K.UM = 'Bulto' OR k.UM IS NULL THEN
-	(SELECT costo FROM Kardex WHERE (Codigo = (SELECT MAX(codigo) FROM Kardex WHERE Item = k.Item)) AND ModoVenta = 'Pesaje' AND (K.UM = 'Bulto' OR k.UM IS NULL))
-	END
-	ELSE
-	CASE WHEN  k.ModoVenta = 'Pesaje' AND (K.UM != 'Bulto' OR k.UM != NULL) THEN
-	0
-	--(SELECT costo/SubCantidad FROM Kardex WHERE (Codigo = (SELECT MAX(codigo) FROM Kardex WHERE Item = k.Item)) AND ModoVenta = 'Pesaje' AND (K.UM != 'Bulto' OR k.UM != NULL))
-	ELSE
-	CASE WHEN k.ModoVenta = 'Multi' AND (K.UM = 'Caja' OR k.UM IS NULL) THEN
-		(SELECT costo FROM Kardex WHERE (Codigo = (SELECT MAX(codigo) FROM Kardex WHERE Item = k.Item)) AND ModoVenta = 'Multi' AND (K.UM = 'Caja' OR k.UM IS NULL))
-		ELSE
-		CASE WHEN k.ModoVenta = 'Multi' AND (K.UM = 'Sobre' OR k.UM != NULL) THEN
-		0
-		--(SELECT costo/Sobres FROM Kardex WHERE (Codigo = (SELECT MAX(codigo) FROM Kardex WHERE Item = k.Item)) AND ModoVenta = 'Multi' AND (K.UM = 'Sobre' OR k.UM != NULL))
-		ELSE
-		CASE WHEN k.ModoVenta = 'Multi' AND (K.UM = 'UND P' OR k.UM != NULL) THEN
-		0
-		--(SELECT costo/SubCantidad FROM Kardex WHERE (Codigo = (SELECT MAX(codigo) FROM Kardex WHERE Item = k.Item)) AND ModoVenta = 'Multi' AND (K.UM = 'UND P' OR k.UM != NULL))
-		END
-		END
-	END
-	END
-END
-END Costo,
-CASE WHEN k.ModoVenta = 'Unidad' THEN
-(SELECT PrecioVenta FROM Kardex WHERE (Codigo = (SELECT MAX(codigo) FROM Kardex WHERE Item = k.Item)) AND ModoVenta = 'Unidad')
-ELSE
-CASE WHEN k.ModoVenta = 'Pesaje' AND (K.UM = 'Bulto' OR k.UM IS NULL) THEN
-	CASE WHEN K.UM = 'Bulto' OR k.UM IS NULL THEN
-	(SELECT PrecioVenta FROM Kardex WHERE (Codigo = (SELECT MAX(codigo) FROM Kardex WHERE Item = k.Item)) AND ModoVenta = 'Pesaje' AND (K.UM = 'Bulto' OR k.UM IS NULL))
-	END
-	ELSE
-	CASE WHEN  k.ModoVenta = 'Pesaje' AND (K.UM != 'Bulto' OR k.UM != NULL) THEN
-	--(SELECT ValorSubcantidad FROM Kardex WHERE (Codigo = (SELECT MAX(codigo) FROM Kardex WHERE Item = k.Item)) AND ModoVenta = 'Pesaje' AND (K.UM != 'Bulto' OR k.UM != NULL))
-	0
-	ELSE
-	CASE WHEN k.ModoVenta = 'Multi' AND (K.UM = 'Caja' OR k.UM IS NULL) THEN
-		(SELECT PrecioVenta FROM Kardex WHERE (Codigo = (SELECT MAX(codigo) FROM Kardex WHERE Item = k.Item)) AND ModoVenta = 'Multi' AND (K.UM = 'Caja' OR k.UM IS NULL))
-		ELSE
-		CASE WHEN k.ModoVenta = 'Multi' AND (K.UM = 'Sobre' OR k.UM != NULL) THEN
-		--(SELECT ValorSobre FROM Kardex WHERE (Codigo = (SELECT MAX(codigo) FROM Kardex WHERE Item = k.Item)) AND ModoVenta = 'Multi' AND (K.UM = 'Sobre' OR k.UM != NULL))
-		0
-		ELSE
-		CASE WHEN k.ModoVenta = 'Multi' AND (K.UM = 'UND P' OR k.UM != NULL) THEN
-		--(SELECT ValorSubcantidad FROM Kardex WHERE (Codigo = (SELECT MAX(codigo) FROM Kardex WHERE Item = k.Item)) AND ModoVenta = 'Multi' AND (K.UM = 'UND P' OR k.UM != NULL))
-		0
-		END
-		END
-	END
-	END
-END
-END PrecioVenta,
-ISNULL( CASE WHEN k.ModoVenta = 'Unidad' THEN
-0
-ELSE
-CASE WHEN k.ModoVenta = 'Pesaje'  THEN
-	(SELECT costo/SubCantidad FROM Kardex WHERE (Codigo = (SELECT MAX(codigo) FROM Kardex WHERE Item = k.Item)) AND ModoVenta = 'Pesaje'  AND (k.UM = 'Bulto' OR k.UM IS NULL))
-	ELSE
-	CASE WHEN k.ModoVenta = 'Multi' THEN
-	(SELECT costo/SubCantidad FROM Kardex WHERE (Codigo = (SELECT MAX(codigo) FROM Kardex WHERE Item = k.Item)) AND ModoVenta = 'Multi' AND (k.UM = 'Caja' OR k.UM IS NULL))
-	END
-END
-END,0) CostoSubCantidad,
-ISNULL( CASE WHEN k.ModoVenta = 'Unidad' THEN
-0
-ELSE
-CASE WHEN k.ModoVenta = 'Pesaje' THEN
-(SELECT ValorSubcantidad FROM Kardex WHERE (Codigo = (SELECT MAX(codigo) FROM Kardex WHERE Item = k.Item)) AND ModoVenta = 'Pesaje' AND (k.UM = 'Bulto' OR k.UM IS NULL))
-ELSE
-CASE WHEN k.ModoVenta = 'Multi' THEN
-(SELECT ValorSubcantidad FROM Kardex WHERE (Codigo = (SELECT MAX(codigo) FROM Kardex WHERE Item = k.Item)) AND ModoVenta = 'Multi' AND (k.UM = 'Caja' OR k.UM IS NULL))
-END
-END
-END,0) PrecioVentaSubCantidad,
-
-ISNULL( CASE WHEN k.ModoVenta = 'Unidad' THEN
-0
-ELSE
-CASE WHEN k.ModoVenta = 'Pesaje' THEN 
-0
-ELSE
-CASE WHEN k.ModoVenta = 'Multi' THEN 
-(SELECT costo/Sobres FROM Kardex WHERE (Codigo = (SELECT MAX(codigo) FROM Kardex WHERE Item = k.Item)) AND ModoVenta = 'Multi' AND (k.UM = 'Caja' OR k.UM IS NULL))
-END
-END
-END,0) CostoSobre,
-ISNULL(CASE WHEN k.ModoVenta = 'Unidad' THEN
-0
-ELSE
-CASE WHEN k.ModoVenta = 'Pesaje' THEN
-0
-ELSE
-CASE WHEN k.ModoVenta = 'Multi' THEN
-(SELECT ValorSobre FROM Kardex WHERE (Codigo = (SELECT MAX(codigo) FROM Kardex WHERE Item = k.Item)) AND ModoVenta = 'Multi' AND (k.UM = 'Caja' OR k.UM IS NULL))
-END
-END
-END,0) PrecioVentaSobre,
-
-k.IVA,k.UnidadMedida,k.Categoria,
-k.Marca,ub.Nombre Ubicacion,slp.Nombre Salida_para,k.DNIproveedor, k.Proveedor,
-k.Stock_minimo,k.Stock_maximo
-FROM Kardex k
-INNER JOIN Ubicacion ub ON ub.Codigo = k.Ubicacion
-INNER JOIN SalidaPara slp ON slp.Codigo = k.Salida_para
-ORDER BY k.Item,k.UM,k.FechaRegistro
-
-DECLARE @TABLA2 TABLE(Item INT,Referencia VARCHAR(max),CodigoBarras VARCHAR(max),Nombre VARCHAR(max),Descripcion VARCHAR(max),
-ModoVenta VARCHAR(max),UM VARCHAR(max),Stock FLOAT,StockSubcantidad FLOAT,StockSobres FLOAT,Costo MONEY,PrecioVenta MONEY,
-CostoSubCantidad MONEY,PrecioVentaSubCantidad MONEY,CostoSobre MONEY,PrecioVentaSobre MONEY,
-IVA FLOAT,UnidadMedida VARCHAR(max),Categoria VARCHAR(max),
-Marca VARCHAR(max),Ubicacion VARCHAR(max),Salida_para VARCHAR(max),DNIproveedor VARCHAR(max),Proveedor VARCHAR(max),
-Stock_minimo INT,Stock_maximo INT)
-INSERT @TABLA2(Item ,Referencia ,CodigoBarras ,Nombre ,Descripcion ,
-ModoVenta ,UM ,Stock ,StockSubcantidad ,StockSobres ,Costo ,PrecioVenta ,
-CostoSubCantidad ,PrecioVentaSubCantidad ,CostoSobre ,PrecioVentaSobre ,
-IVA ,UnidadMedida ,Categoria ,
-Marca ,Ubicacion ,Salida_para ,DNIproveedor ,Proveedor ,
-Stock_minimo ,Stock_maximo )
-SELECT * FROM @TABLA
-GROUP BY
-Item ,Referencia ,CodigoBarras ,Nombre ,Descripcion ,
-ModoVenta ,UM ,Stock ,StockSubcantidad ,StockSobres ,Costo ,PrecioVenta ,
-CostoSubCantidad ,PrecioVentaSubCantidad ,CostoSobre ,PrecioVentaSobre ,
-IVA ,UnidadMedida ,Categoria ,
-Marca ,Ubicacion ,Salida_para ,DNIproveedor ,Proveedor ,
-Stock_minimo ,Stock_maximo
-
-IF(@v_tipo_busqueda = 'Contiene')
+IF @v_tipo_busqueda = 'Contiene'
 BEGIN
-SELECT 
-	Item ,Referencia ,CodigoBarras ,Nombre ,Descripcion ,
-	ModoVenta ,SUM(Stock) Stock,SUM(StockSubcantidad) StockSubcantidad, SUM(StockSobres) StockSobres,SUM(Costo) Costo , SUM(PrecioVenta)  PrecioVenta,
-	SUM(CostoSubCantidad) CostoSubCantidad ,SUM(PrecioVentaSubCantidad) PrecioVentaSubCantidad,SUM(CostoSobre) CostoSobre,SUM(PrecioVentaSobre) PrecioVentaSobre,
-	IVA ,UnidadMedida ,Categoria ,
-	Marca ,Ubicacion ,Salida_para ,DNIproveedor ,Proveedor ,
-	Stock_minimo ,Stock_maximo
-	FROM @TABLA2
-	WHERE Item LIKE @v_buscar+'%' OR Referencia LIKE @v_buscar+'%' OR CodigoBarras LIKE @v_buscar+'%' OR Nombre LIKE @v_buscar+'%'
-	GROUP BY 
-	Item ,Referencia ,CodigoBarras ,Nombre ,Descripcion ,
-	ModoVenta,
-	IVA ,UnidadMedida ,Categoria ,
-	Marca ,Ubicacion ,Salida_para ,DNIproveedor ,Proveedor ,
-	Stock_minimo ,Stock_maximo
+SELECT k0.Item,
+(SELECT k1.Referencia FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Referencia,
+(SELECT k1.CodigoBarras FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) CodigoBarras,
+(SELECT k1.Nombre FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Nombre,
+(SELECT k1.Descripcion FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Descripcion,
+ModoVenta,
+CASE WHEN ModoVenta = 'Unidad' THEN
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Unidad')
+	-
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Unidad'),0)
+ELSE
+CASE WHEN ModoVenta = 'Pesaje' THEN
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Pesaje')
+	-
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Pesaje'),0)
+ELSE
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Multi')
+	-
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Multi'),0)
+END
+END
+Stock,
+
+SubCantidad 
+*
+(
+CASE WHEN ModoVenta = 'Unidad' THEN
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Unidad')
+	-
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Unidad'),0)
+ELSE
+CASE WHEN ModoVenta = 'Pesaje' THEN
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Pesaje')
+	-
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Pesaje'),0)
+ELSE
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Multi')
+	-
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Multi'),0)
+END
+END
+) 
+StockSubCantidad,
+
+Sobres
+*
+(
+CASE WHEN ModoVenta = 'Unidad' THEN
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Unidad')
+	-
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Unidad'),0)
+ELSE
+CASE WHEN ModoVenta = 'Pesaje' THEN
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Pesaje')
+	-
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Pesaje'),0)
+ELSE
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Multi')
+	-
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Multi'),0)
+END
+END
+) 
+StockSobres,
+(SELECT k1.Costo FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Costo,
+(SELECT k1.PrecioVenta FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) PrecioVenta,
+(ISNULL((SELECT k1.Costo FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item))
+/
+CASE WHEN ModoVenta != 'Unidad' THEN
+(SELECT k1.SubCantidad FROM Kardex k1 WHERE (k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) AND k1.ModoVenta != 'Unidad')
+END,0))
+CostoSubCantidad,
+(SELECT k1.ValorSubcantidad FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) ValorSubcantidad,
+(ISNULL((SELECT k1.Costo FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item))
+/
+CASE WHEN ModoVenta = 'Multi' THEN
+(SELECT k1.Sobres FROM Kardex k1 WHERE (k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) AND k1.ModoVenta = 'Multi')
+END,0))
+CostoSobre,
+(SELECT k1.ValorSobre FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) ValorSobre,
+(SELECT k1.IVA FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) IVA,
+(SELECT k1.UnidadMedida FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) UnidadMedida,
+(SELECT k1.Categoria FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Categoria,
+(SELECT k1.Marca FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Marca,
+(SELECT ub.Nombre FROM Kardex k1 INNER JOIN Ubicacion ub ON ub.Codigo = k1.Ubicacion WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Ubicacion,
+(SELECT slp.Nombre FROM Kardex k1 INNER JOIN SalidaPara slp ON slp.Codigo = k1.Salida_para WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Salida_para,
+(SELECT k1.DNIproveedor FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) DNIproveedor,
+(SELECT k1.Proveedor FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Proveedor,
+(SELECT k1.Stock_minimo FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Stock_minimo,
+(SELECT k1.Stock_maximo FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Stock_maximo
+FROM Kardex k0
+WHERE K0.Item LIKE @v_buscar+'%' OR K0.Referencia LIKE @v_buscar+'%' OR K0.CodigoBarras LIKE @v_buscar+'%' OR K0.Nombre LIKE @v_buscar+'%'
+GROUP BY Item,ModoVenta,SubCantidad,Sobres
+ORDER BY Item
 END
 ELSE
 BEGIN
-SELECT 
-	Item ,Referencia ,CodigoBarras ,Nombre ,Descripcion ,
-	ModoVenta ,SUM(Stock) Stock,SUM(StockSubcantidad) StockSubcantidad, SUM(StockSobres) StockSobres,SUM(Costo) Costo , SUM(PrecioVenta)  PrecioVenta,
-	SUM(CostoSubCantidad) CostoSubCantidad ,SUM(PrecioVentaSubCantidad) PrecioVentaSubCantidad,SUM(CostoSobre) CostoSobre,SUM(PrecioVentaSobre) PrecioVentaSobre,
-	IVA ,UnidadMedida ,Categoria ,
-	Marca ,Ubicacion ,Salida_para ,DNIproveedor ,Proveedor ,
-	Stock_minimo ,Stock_maximo
-	FROM @TABLA2
-	WHERE Item = CASE WHEN ISNUMERIC(@v_buscar) = 1 THEN @v_buscar ELSE 0 END OR Referencia = @v_buscar OR CodigoBarras = @v_buscar OR Nombre = @v_buscar
-	GROUP BY 
-	Item ,Referencia ,CodigoBarras ,Nombre ,Descripcion ,
-	ModoVenta,
-	IVA ,UnidadMedida ,Categoria ,
-	Marca ,Ubicacion ,Salida_para ,DNIproveedor ,Proveedor ,
-	Stock_minimo ,Stock_maximo
+SELECT k0.Item,
+(SELECT k1.Referencia FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Referencia,
+(SELECT k1.CodigoBarras FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) CodigoBarras,
+(SELECT k1.Nombre FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Nombre,
+(SELECT k1.Descripcion FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Descripcion,
+ModoVenta,
+CASE WHEN ModoVenta = 'Unidad' THEN
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Unidad')
+	-
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Unidad'),0)
+ELSE
+CASE WHEN ModoVenta = 'Pesaje' THEN
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Pesaje')
+	-
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Pesaje'),0)
+ELSE
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Multi')
+	-
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Multi'),0)
 END
+END
+Stock,
 
+SubCantidad 
+*
+(
+CASE WHEN ModoVenta = 'Unidad' THEN
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Unidad')
+	-
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Unidad'),0)
+ELSE
+CASE WHEN ModoVenta = 'Pesaje' THEN
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Pesaje')
+	-
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Pesaje'),0)
+ELSE
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Multi')
+	-
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Multi'),0)
+END
+END
+) 
+StockSubCantidad,
+
+Sobres
+*
+(
+CASE WHEN ModoVenta = 'Unidad' THEN
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Unidad')
+	-
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Unidad'),0)
+ELSE
+CASE WHEN ModoVenta = 'Pesaje' THEN
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Pesaje')
+	-
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Pesaje'),0)
+ELSE
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Multi')
+	-
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Multi'),0)
+END
+END
+) 
+StockSobres,
+(SELECT k1.Costo FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Costo,
+(SELECT k1.PrecioVenta FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) PrecioVenta,
+(ISNULL((SELECT k1.Costo FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item))
+/
+CASE WHEN ModoVenta != 'Unidad' THEN
+(SELECT k1.SubCantidad FROM Kardex k1 WHERE (k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) AND k1.ModoVenta != 'Unidad')
+END,0))
+CostoSubCantidad,
+(SELECT k1.ValorSubcantidad FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) ValorSubcantidad,
+(ISNULL((SELECT k1.Costo FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item))
+/
+CASE WHEN ModoVenta = 'Multi' THEN
+(SELECT k1.Sobres FROM Kardex k1 WHERE (k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) AND k1.ModoVenta = 'Multi')
+END,0))
+CostoSobre,
+(SELECT k1.ValorSobre FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) ValorSobre,
+(SELECT k1.IVA FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) IVA,
+(SELECT k1.UnidadMedida FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) UnidadMedida,
+(SELECT k1.Categoria FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Categoria,
+(SELECT k1.Marca FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Marca,
+(SELECT ub.Nombre FROM Kardex k1 INNER JOIN Ubicacion ub ON ub.Codigo = k1.Ubicacion WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Ubicacion,
+(SELECT slp.Nombre FROM Kardex k1 INNER JOIN SalidaPara slp ON slp.Codigo = k1.Salida_para WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Salida_para,
+(SELECT k1.DNIproveedor FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) DNIproveedor,
+(SELECT k1.Proveedor FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Proveedor,
+(SELECT k1.Stock_minimo FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Stock_minimo,
+(SELECT k1.Stock_maximo FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Stock_maximo
+FROM Kardex k0
+WHERE K0.Item = CASE WHEN  ISNUMERIC(@v_buscar) = 1 THEN @v_buscar ELSE 0 END 
+OR K0.Referencia = @v_buscar OR K0.CodigoBarras = @v_buscar OR K0.Nombre = @v_buscar
+GROUP BY Item,ModoVenta,SubCantidad,Sobres
+ORDER BY Item
+END
 	GO
 	CREATE PROC [dbo].[sp_consultar_Ventas]
 		@v_buscar VARCHAR(300),
