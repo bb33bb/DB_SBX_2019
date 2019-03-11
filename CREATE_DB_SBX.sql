@@ -265,6 +265,140 @@ USE DB_SBX
 	FOREIGN KEY(Item) REFERENCES Producto(Item) ON DELETE CASCADE
 	)
 	GO
+----Usuarios y roles
+CREATE TABLE Rol(
+Codigo INT PRIMARY KEY,
+Nombre VARCHAR(50),
+DescripcionRol VARCHAR(200)
+)
+GO
+INSERT INTO Rol VALUES(1,'Administrador','Control total')
+GO
+CREATE TABLE Modulo(
+codigo INT PRIMARY KEY,
+Nombre VARCHAR(20),
+DescripcionModulo VARCHAR(200)
+)
+GO
+INSERT INTO Modulo VALUES
+(1,'VENTA',''),
+(2,'PRODUCTO',''),
+(3,'INVENTARIO',''),
+(4,'CLIENTE',''),
+(5,'PROVEEDOR',''),
+(6,'EMPRESA',''),
+(7,'DOMICILIO',''),
+(8,'SEPARADO',''),
+(9,'CAJA',''),
+(10,'GASTOS',''),
+(11,'REPORTES',''),
+(12,'AJUSTES','')
+GO
+CREATE TABLE Permiso(
+codigo INT PRIMARY KEY,
+Nombre VARCHAR(20),
+DescripcionPermiso VARCHAR(200)
+)
+GO
+INSERT INTO Permiso VALUES
+(1,'separado',''),
+(2,'domicilio',''),
+(3,'descuento',''),
+(4,'quitar_todo',''),
+(5,'quitar_uno',''),
+(6,'consultas',''),
+(7,'agregar_producto',''),
+(8,'agregar_cliente',''),
+(9,'exportar_excel',''),
+(10,'editar',''),
+(11,'eliminar',''),
+(12,'guardar',''),
+(13,'limpiar',''),
+(14,'caracteristicas',''),
+(15,'agregar_proveedor',''),
+(16,'agregar_mensajero',''),
+(17,'pagos',''),
+(18,'historial','')
+GO
+CREATE TABLE Rol_Permiso(
+Rol INT,
+Permiso INT,
+Modulo INT,
+FOREIGN KEY(Rol) REFERENCES Rol(codigo),
+FOREIGN KEY(Permiso) REFERENCES Permiso(codigo),
+FOREIGN KEY(Modulo) REFERENCES Modulo(codigo)
+)
+GO
+INSERT INTO Rol_Permiso VALUES
+(1,1,1),
+(1,2,1),
+(1,3,1),
+(1,4,1),
+(1,5,1),
+(1,6,1),
+(1,7,1),
+(1,8,1),
+(1,9,2),
+(1,10,2),
+(1,11,2),
+(1,12,3),
+(1,6,3),
+(1,14,3),
+(1,13,3),
+(1,15,3),
+(1,12,4),
+(1,13,4),
+(1,10,4),
+(1,11,4),
+(1,9,4),
+(1,12,5),
+(1,13,5),
+(1,10,5),
+(1,11,5),
+(1,9,5),
+(1,12,6),
+(1,13,6),
+(1,9,7),
+(1,11,7),
+(1,12,7),
+(1,16,7),
+(1,9,8),
+(1,11,8),
+(1,17,8),
+(1,18,8)
+GO
+CREATE TABLE Usuario(
+Codigo INT IDENTITY(1,1) PRIMARY KEY,
+DNI VARCHAR(20),
+Nombres VARCHAR(50),
+Apellidos VARCHAR(50),
+Celular VARCHAR(10),
+Telefono VARCHAR(10),
+Email VARCHAR(100),
+FechaNacimiento DATE,
+NombreUsuario VARCHAR(50) NOT NULL,
+Contrasena VARCHAR(50) NOT NULL,
+Estado VARCHAR(10) NOT NULL,
+Rol INT,
+FOREIGN KEY(Rol) REFERENCES Rol(codigo)
+)
+GO
+INSERT INTO Usuario VALUES
+('1','Admin','','','','',null,'Admin',ENCRYPTBYPASSPHRASE('password','admin'),'Activo',1)
+----Fin Usuarios y roles
+GO
+
+CREATE TABLE Caja(
+Codigo INT IDENTITY(1,1) PRIMARY KEY,
+Valor MONEY,
+TipoOperacion VARCHAR(20),
+Usuario INT,
+FechaRegistro DATETIME,
+Fecha_Ultimo_cierre DATETIME,
+Fecha_Ultima_venta DATETIME,
+Base MONEY
+)
+	GO
 	CREATE TRIGGER tr_Venta_insert on Venta
 	FOR INSERT
 	AS
@@ -350,6 +484,21 @@ USE DB_SBX
 	END
 	GO
 	--Creacion de procedimientos almacenados
+	CREATE PROCEDURE sp_verificar_login
+	@Usuarios VARCHAR(50),
+	@Contrasenas VARCHAR(50)
+	AS
+	DECLARE
+	@PassEncritado VARCHAR(300),
+	@PassDecifrado VARCHAR(300)
+
+	SET @PassEncritado = (SELECT Contrasena FROM Usuario WHERE NombreUsuario = @Usuarios)
+	SET	@PassDecifrado = DECRYPTBYPASSPHRASE('password', @PassEncritado)
+	IF(@PassDecifrado = @Contrasenas)
+	SELECT Codigo,Nombres+' '+Apellidos Nombre,NombreUsuario FROM Usuario WHERE NombreUsuario = @Usuarios
+	ELSE
+	SELECT Codigo,Nombres+' '+Apellidos Nombre,NombreUsuario FROM Usuario WHERE Codigo = 0
+	GO
 	CREATE PROC sp_consultar_productos_kardex
 @v_tipo_busqueda AS VARCHAR(MAX),
 @v_buscar AS VARCHAR(MAX)
