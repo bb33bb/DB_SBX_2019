@@ -1346,3 +1346,24 @@ END
 	CodigoBarras = @Buscar OR Nombre = @Buscar) 
 	AND CONVERT(date,FechaRegistro) BETWEEN @FechaIni AND @FechaFin
 	END
+	GO
+
+CREATE FUNCTION [dbo].[fnLeeClave] 
+(
+    @clave VARCHAR(8000)
+)
+RETURNS VARCHAR(25)
+AS
+BEGIN
+    
+    
+    DECLARE @pass AS VARCHAR(25)
+    ------------------------------------
+    ------------------------------------
+    --Se descifra el campo aplicandole la misma llave con la que se cifro password
+    SET @pass = DECRYPTBYPASSPHRASE('password',@clave)
+    ------------------------------------
+    ------------------------------------    
+    RETURN @pass
+
+END
