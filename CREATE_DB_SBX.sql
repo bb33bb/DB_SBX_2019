@@ -320,52 +320,110 @@ INSERT INTO Permiso VALUES
 (17,'pagos',''),
 (18,'historial','')
 GO
-CREATE TABLE Rol_Permiso(
-Rol INT,
-Permiso INT,
+CREATE TABLE Modulo_permiso(
+Codigo INT IDENTITY(1,1) PRIMARY KEY,
 Modulo INT,
-FOREIGN KEY(Rol) REFERENCES Rol(codigo),
-FOREIGN KEY(Permiso) REFERENCES Permiso(codigo),
-FOREIGN KEY(Modulo) REFERENCES Modulo(codigo)
+Permiso INT
 )
 GO
-INSERT INTO Rol_Permiso VALUES
-(1,1,1),
-(1,2,1),
-(1,3,1),
-(1,4,1),
-(1,5,1),
-(1,6,1),
-(1,7,1),
-(1,8,1),
-(1,9,2),
-(1,10,2),
-(1,11,2),
-(1,12,3),
-(1,6,3),
-(1,14,3),
-(1,13,3),
-(1,15,3),
-(1,12,4),
-(1,13,4),
-(1,10,4),
-(1,11,4),
-(1,9,4),
-(1,12,5),
-(1,13,5),
-(1,10,5),
-(1,11,5),
-(1,9,5),
-(1,12,6),
-(1,13,6),
-(1,9,7),
-(1,11,7),
-(1,12,7),
-(1,16,7),
-(1,9,8),
-(1,11,8),
-(1,17,8),
-(1,18,8)
+INSERT INTO Modulo_permiso VALUES
+(1,1),
+(1,2),
+(1,3),
+(1,4),
+(1,5),
+(1,6),
+(1,7),
+(1,8),
+
+(2,9),
+(2,10),
+(2,11),
+
+(3,12),
+(3,6),
+(3,14),
+(3,13),
+(3,15),
+
+(4,12),
+(4,13),
+(4,10),
+(4,11),
+(4,9),
+
+(5,12),
+(5,6),
+(5,10),
+(5,11),
+(5,9),
+
+(6,12),
+(6,6),
+
+(7,9),
+(7,11),
+(7,12),
+(7,16),
+
+(8,9),
+(8,11),
+(8,17),
+(8,18),
+
+(9,6),
+(10,6),
+(11,6),
+(12,6)
+GO
+CREATE TABLE Rol_Modulo_Permiso(
+Rol INT,
+Modulo_permiso INT,
+FOREIGN KEY(Rol) REFERENCES Rol(codigo),
+FOREIGN KEY(Modulo_permiso) REFERENCES Modulo_permiso(codigo)
+)
+GO
+INSERT INTO Rol_Modulo_Permiso VALUES
+(1,1),
+(1,2),
+(1,3),
+(1,4),
+(1,5),
+(1,6),
+(1,7),
+(1,8),
+(1,9),
+(1,10),
+(1,11),
+(1,12),
+(1,13),
+(1,14),
+(1,15),
+(1,16),
+(1,17),
+(1,18),
+(1,19),
+(1,20),
+(1,21),
+(1,22),
+(1,23),
+(1,24),
+(1,25),
+(1,26),
+(1,27),
+(1,28),
+(1,29),
+(1,30),
+(1,31),
+(1,32),
+(1,33),
+(1,34),
+(1,35),
+(1,36),
+(1,37),
+(1,38),
+(1,39),
+(1,40)
 GO
 CREATE TABLE Usuario(
 Codigo INT IDENTITY(1,1) PRIMARY KEY,
@@ -397,6 +455,20 @@ FechaRegistro DATETIME,
 Fecha_Ultimo_cierre DATETIME,
 Fecha_Ultima_venta DATETIME,
 Base MONEY
+)
+GO
+CREATE TABLE Gastos(
+codigo INT IDENTITY(1,1) PRIMARY KEY,
+Nombre	VARCHAR(50),
+Descripcion  VARCHAR(200)
+)
+GO
+CREATE TABLE GastosM(
+codigo INT IDENTITY(1,1) PRIMARY KEY,
+FechaRegistro DATETIME,
+Gasto INT,
+Valor MONEY,
+FOREIGN KEY(Gasto) REFERENCES Gastos(codigo)
 )
 	GO
 	CREATE TRIGGER tr_Venta_insert on Venta
