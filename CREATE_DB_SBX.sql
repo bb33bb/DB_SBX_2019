@@ -452,9 +452,8 @@ Valor MONEY,
 TipoOperacion VARCHAR(20),
 Usuario INT,
 FechaRegistro DATETIME,
-Fecha_Ultimo_cierre DATETIME,
-Fecha_Ultima_venta DATETIME,
-Base MONEY
+Codigo_Ultimo_cierre INT,
+Codigo_Ultima_venta INT
 )
 GO
 CREATE TABLE Gastos(
@@ -1418,6 +1417,44 @@ END
 	CodigoBarras = @Buscar OR Nombre = @Buscar) 
 	AND CONVERT(date,FechaRegistro) BETWEEN @FechaIni AND @FechaFin
 	END
+	GO
+	CREATE PROC SP_CALCULAR_INGRESOS
+	@UltimoCierre AS VARCHAR(20),
+	@UltimaVenta AS VARCHAR(20),
+	@Usuario AS VARCHAR(20)
+	AS
+	DECLARE 
+	@Ingresos AS MONEY
+	DECLARE @TABLA AS TABLE(NombreDocumento VARCHAR(50),Consecutivo FLOAT, Total MONEY, TipoVenta VARCHAR(20))
+	--INSERTAR INGRESOS SIN DOMICILIOS Y SEPARADOS
+	INSERT INTO @TABLA
+	SELECT NombreDocumento, ConsecutivoDocumento, Total, 'Venta directa' FROM Venta 
+	WHERE (Domicilio IS NULL AND SistemaSeparado IS NULL) AND 
+	(Fecha BETWEEN (CASE WHEN (SELECT c2.FechaRegistro FROM Caja c2 WHERE c2.Codigo = @UltimoCierre AND c2.Usuario = @Usuario) IS NULL 
+	THEN '1990-01-01' ELSE (SELECT c2.FechaRegistro FROM Caja c2 WHERE c2.Codigo = @UltimoCierre AND c2.Usuario = @Usuario) END) AND 
+	(SELECT v2.Fecha FROM Venta v2 WHERE v2.Codigo = @UltimaVenta AND v2.Usuario = @Usuario)  AND Usuario = @Usuario)
+	GROUP BY NombreDocumento, ConsecutivoDocumento, Total
+
+	--INSERTAR INGRESOS DOMICILIOS
+	INSERT INTO @TABLA
+	SELECT v.NombreDocumento, v.ConsecutivoDocumento, v.Total,'Venta Domicilio' FROM Venta v
+	INNER JOIN Domicilio d ON d.Codigo = v.Domicilio
+	WHERE d.Estado != 'Pendiente'
+	GROUP BY NombreDocumento, ConsecutivoDocumento, Total
+	--INSERTAR INGRESOS SISTEMA SEPARADO
+	DECLARE @TABLA2 TABLE(Abonos MONEY)
+	INSERT INTO @TABLA2
+	SELECT ISNULL(SUM(ValorAbono),0) VlrAbono 
+	FROM AbonoSistemaSeparado 
+	WHERE
+	(Fecha BETWEEN (CASE WHEN (SELECT c2.FechaRegistro FROM Caja c2 WHERE c2.Codigo = @UltimoCierre AND c2.Usuario = @Usuario) IS NULL 
+	THEN '1990-01-01' ELSE (SELECT c2.FechaRegistro FROM Caja c2 WHERE c2.Codigo = @UltimoCierre AND c2.Usuario = @Usuario) END) AND 
+	(SELECT v2.Fecha FROM Venta v2 WHERE v2.Codigo = @UltimaVenta AND v2.Usuario = @Usuario))
+
+	SET @Ingresos = (SELECT ISNULL(SUM(Total),0) Ingresos FROM @TABLA)
+	SET @Ingresos = @Ingresos + (SELECT ISNULL(SUM(Abonos),0) Abon FROM @TABLA2)
+
+	SELECT @Ingresos Ingresos
 	GO
 
 CREATE FUNCTION [dbo].[fnLeeClave] 
