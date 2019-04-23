@@ -1418,13 +1418,21 @@ END
 	AND CONVERT(date,FechaRegistro) BETWEEN @FechaIni AND @FechaFin
 	END
 	GO
-	CREATE PROC SP_CALCULAR_INGRESOS
+USE [DB_SBX]
+GO
+/****** Object:  StoredProcedure [dbo].[SP_CALCULAR_INGRESOS]    Script Date: 22/04/2019 19:04:52 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE PROC [dbo].[SP_CALCULAR_INGRESOS]
 	@UltimoCierre AS VARCHAR(20),
 	@UltimaVenta AS VARCHAR(20),
 	@Usuario AS VARCHAR(20)
 	AS
 	DECLARE 
-	@Ingresos AS MONEY
+	@Ingresos AS MONEY,
+	@Gastos AS MONEY
 	DECLARE @TABLA AS TABLE(NombreDocumento VARCHAR(50),Consecutivo FLOAT, Total MONEY, TipoVenta VARCHAR(20))
 	--INSERTAR INGRESOS SIN DOMICILIOS Y SEPARADOS
 	INSERT INTO @TABLA
@@ -1449,12 +1457,30 @@ END
 	WHERE
 	(Fecha BETWEEN (CASE WHEN (SELECT c2.FechaRegistro FROM Caja c2 WHERE c2.Codigo = @UltimoCierre AND c2.Usuario = @Usuario) IS NULL 
 	THEN '1990-01-01' ELSE (SELECT c2.FechaRegistro FROM Caja c2 WHERE c2.Codigo = @UltimoCierre AND c2.Usuario = @Usuario) END) AND 
-	(SELECT v2.Fecha FROM Venta v2 WHERE v2.Codigo = @UltimaVenta AND v2.Usuario = @Usuario))
-
+	--(SELECT v2.Fecha FROM Venta v2 WHERE v2.Codigo = @UltimaVenta AND v2.Usuario = @Usuario)
+	SYSDATETIME()
+	)
+	--INSERTAR GASTOS 
+	DECLARE @TABLA3 TABLE(Gastos MONEY)
+	INSERT INTO @TABLA3
+	SELECT ISNULL(SUM(Valor),0) VlrGasto
+	FROM GastosM 
+	WHERE
+	(FechaRegistro BETWEEN (CASE WHEN (SELECT c2.FechaRegistro FROM Caja c2 WHERE c2.Codigo = @UltimoCierre AND c2.Usuario = @Usuario) IS NULL 
+	THEN '1990-01-01' ELSE (SELECT c2.FechaRegistro FROM Caja c2 WHERE c2.Codigo = @UltimoCierre AND c2.Usuario = @Usuario) END) AND 
+	--(SELECT v2.Fecha FROM Venta v2 WHERE v2.Codigo = @UltimaVenta AND v2.Usuario = @Usuario)
+	SYSDATETIME()
+	)
+		
 	SET @Ingresos = (SELECT ISNULL(SUM(Total),0) Ingresos FROM @TABLA)
 	SET @Ingresos = @Ingresos + (SELECT ISNULL(SUM(Abonos),0) Abon FROM @TABLA2)
+	SET @Gastos = (SELECT ISNULL(SUM(Gastos),0) Gastos FROM @TABLA3)
 
-	SELECT @Ingresos Ingresos
+	DECLARE @TABLA4 TABLE(Ingresos MONEY,Gastos MONEY)
+	INSERT INTO @TABLA4
+	Values(@Ingresos,@Gastos)
+
+	SELECT * FROM @TABLA4
 	GO
 
 CREATE FUNCTION [dbo].[fnLeeClave] 
