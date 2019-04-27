@@ -453,7 +453,8 @@ TipoOperacion VARCHAR(20),
 Usuario INT,
 FechaRegistro DATETIME,
 Codigo_Ultimo_cierre INT,
-Codigo_Ultima_venta INT
+Codigo_Ultima_venta INT,
+CodigoCaja INT
 )
 GO
 CREATE TABLE Gastos(
@@ -1481,6 +1482,16 @@ CREATE PROC [dbo].[SP_CALCULAR_INGRESOS]
 	Values(@Ingresos,@Gastos)
 
 	SELECT * FROM @TABLA4
+	GO
+	CREATE TABLE Cierre_Caja(
+	Codigo INT,
+	BaseCaja MONEY,
+	Ingresos MONEY,
+	Gastos MONEY,
+	CierreCaja MONEY,
+	ConteoDinero MONEY,
+	TotalDiferencia MONEY
+)
 	GO
 
 CREATE FUNCTION [dbo].[fnLeeClave] 
