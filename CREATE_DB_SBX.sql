@@ -1492,6 +1492,41 @@ CREATE PROC [dbo].[SP_CALCULAR_INGRESOS]
 	ConteoDinero MONEY,
 	TotalDiferencia MONEY
 )
+GO
+CREATE PROC SP_REPORTE_GANANCIAS_PERDIDAS
+@FechaInici AS VARCHAR(max),
+@FechaFin AS VARCHAR(max)
+AS
+--Reporte de Ventas Directas
+SELECT 
+Producto,p.CodigoBarras,p.Referencia,p.Nombre,p.Descripcion,SUM(v.Cantidad) Cantidad,SUM((v.Costo * v.Cantidad)) CostoTotal,SUM((v.PrecioVenta * v.Cantidad)) SubTotal,
+SUM((v.PrecioVenta * v.Cantidad) * (descuento/100)) ValorDescuento,
+SUM(((v.PrecioVenta * v.Cantidad) - ((v.PrecioVenta * v.Cantidad) * (descuento/100)))) Total,
+SUM(((v.PrecioVenta * v.Cantidad) - ((v.PrecioVenta * v.Cantidad) * (descuento/100))) 
+-
+(v.Costo * v.Cantidad)) Resultado,'V Directa' Modulo
+FROM Venta v
+INNER JOIN Producto p ON p.Item = v.Producto
+WHERE Domicilio IS NULL AND SistemaSeparado IS NULL
+AND CONVERT(date,v.Fecha) BETWEEN @FechaInici AND @FechaFin
+GROUP BY Producto,p.CodigoBarras,p.Referencia,p.Nombre,p.Descripcion
+UNION ALL
+
+--Reporte de Ventas Domicilios
+SELECT 
+Producto,p.CodigoBarras,p.Referencia,p.Nombre,p.Descripcion,SUM(v.Cantidad) Cantidad,SUM((v.Costo * v.Cantidad)) CostoTotal,SUM((v.PrecioVenta * v.Cantidad)) SubTotal,
+SUM((v.PrecioVenta * v.Cantidad) * (descuento/100)) ValorDescuento,
+SUM(((v.PrecioVenta * v.Cantidad) - ((v.PrecioVenta * v.Cantidad) * (descuento/100)))) Total,
+SUM(((v.PrecioVenta * v.Cantidad) - ((v.PrecioVenta * v.Cantidad) * (descuento/100))) 
+-
+(v.Costo * v.Cantidad)) Resultado,'V Domicilio' Modulo
+FROM Venta v
+INNER JOIN Producto p ON p.Item = v.Producto
+INNER JOIN Domicilio d ON d.Codigo = v.Domicilio
+WHERE Domicilio IS NOT NULL AND d.Estado = 'Pago'
+AND CONVERT(date,v.Fecha) BETWEEN @FechaInici AND @FechaFin
+GROUP BY Producto,p.CodigoBarras,p.Referencia,p.Nombre,p.Descripcion
+
 	GO
 
 CREATE FUNCTION [dbo].[fnLeeClave] 
