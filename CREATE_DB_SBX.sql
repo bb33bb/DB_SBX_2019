@@ -51,7 +51,7 @@ USE DB_SBX
 	Nombre VARCHAR(200) NOT NULL
 	)
 	GO
-	INSERT INTO UnidadMedida VALUES('N/A'),('KILOGRAMO'),('LIBRA'),('LITRO'),('GRAMO')
+	INSERT INTO UnidadMedida VALUES('N/A'),('KG'),('LB'),('LT'),('G')
 	GO
 	CREATE TABLE Ubicacion (
 	Codigo INT IDENTITY(1,1) PRIMARY KEY,
