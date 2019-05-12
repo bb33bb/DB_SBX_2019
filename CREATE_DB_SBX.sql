@@ -1427,7 +1427,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 CREATE PROC [dbo].[SP_CALCULAR_INGRESOS]
-	@UltimoCierre AS VARCHAR(20),
+@UltimoCierre AS VARCHAR(20),
 	@UltimaVenta AS VARCHAR(20),
 	@Usuario AS VARCHAR(20)
 	AS
@@ -1448,7 +1448,7 @@ CREATE PROC [dbo].[SP_CALCULAR_INGRESOS]
 	INSERT INTO @TABLA
 	SELECT v.NombreDocumento, v.ConsecutivoDocumento, v.Total,'Venta Domicilio' FROM Venta v
 	INNER JOIN Domicilio d ON d.Codigo = v.Domicilio
-	WHERE d.Estado != 'Pendiente'
+	WHERE d.Estado = 'Pago'
 	GROUP BY NombreDocumento, ConsecutivoDocumento, Total
 	--INSERTAR INGRESOS SISTEMA SEPARADO
 	DECLARE @TABLA2 TABLE(Abonos MONEY)
@@ -1480,7 +1480,9 @@ CREATE PROC [dbo].[SP_CALCULAR_INGRESOS]
 	DECLARE @TABLA4 TABLE(Ingresos MONEY,Gastos MONEY)
 	INSERT INTO @TABLA4
 	Values(@Ingresos,@Gastos)
-
+	--Pasar a estado Procesado los domicilios pagos
+	UPDATE Domicilio SET Estado = 'Procesado'
+	WHERE Estado = 'Pago'
 	SELECT * FROM @TABLA4
 	GO
 	CREATE TABLE Cierre_Caja(
@@ -1523,7 +1525,7 @@ SUM(((v.PrecioVenta * v.Cantidad) - ((v.PrecioVenta * v.Cantidad) * (descuento/1
 FROM Venta v
 INNER JOIN Producto p ON p.Item = v.Producto
 INNER JOIN Domicilio d ON d.Codigo = v.Domicilio
-WHERE Domicilio IS NOT NULL AND d.Estado = 'Pago'
+WHERE Domicilio IS NOT NULL AND d.Estado = 'Pago' OR d.Estado = 'Procesado'
 AND CONVERT(date,v.Fecha) BETWEEN @FechaInici AND @FechaFin
 GROUP BY Producto,p.CodigoBarras,p.Referencia,p.Nombre,p.Descripcion
 
