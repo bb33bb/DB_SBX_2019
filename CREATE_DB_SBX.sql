@@ -617,7 +617,8 @@ FOREIGN KEY(Gasto) REFERENCES Gastos(codigo)
 	ELSE
 	SELECT Codigo,Nombres+' '+Apellidos Nombre,NombreUsuario FROM Usuario WHERE Codigo = 0
 	GO
-	CREATE PROC sp_consultar_productos_kardex
+	--------
+	CREATE PROC [dbo].[sp_consultar_productos_kardex]
 @v_tipo_busqueda AS VARCHAR(MAX),
 @v_buscar AS VARCHAR(MAX)
 AS
@@ -637,11 +638,11 @@ ELSE
 CASE WHEN ModoVenta = 'Pesaje' THEN
 	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Pesaje')
 	-
-	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Pesaje'),0)
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Pesaje' AND k1.UM = 'Bulto'),0)
 ELSE
 	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Multi')
 	-
-	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Multi'),0)
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Multi' AND k1.UM = 'Caja'),0)
 END
 END
 Stock,
@@ -657,11 +658,11 @@ ELSE
 CASE WHEN ModoVenta = 'Pesaje' THEN
 	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Pesaje')
 	-
-	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Pesaje'),0)
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Pesaje' AND k1.UM != 'Bulto') ,0)
 ELSE
 	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Multi')
 	-
-	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Multi'),0)
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Multi' AND k1.UM = 'UND P'),0)
 END
 END
 ) 
@@ -671,18 +672,18 @@ Sobres
 *
 (
 CASE WHEN ModoVenta = 'Unidad' THEN
-	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Unidad')
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Unidad')
 	-
-	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Unidad'),0)
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Unidad'),0)
 ELSE
 CASE WHEN ModoVenta = 'Pesaje' THEN
-	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Pesaje')
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Pesaje')
 	-
-	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Pesaje'),0)
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Pesaje' AND k1.UM != 'Bulto'),0)
 ELSE
-	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Multi')
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Multi')
 	-
-	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Multi'),0)
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Multi' AND k1.UM = 'Sobre'),0)
 END
 END
 ) 
@@ -732,13 +733,13 @@ CASE WHEN ModoVenta = 'Unidad' THEN
 	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Unidad'),0)
 ELSE
 CASE WHEN ModoVenta = 'Pesaje' THEN
-	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Pesaje')
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Pesaje' )
 	-
-	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Pesaje'),0)
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Pesaje' AND k1.UM = 'Bulto'),0)
 ELSE
 	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Multi')
 	-
-	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Multi'),0)
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Multi' AND k1.UM = 'Caja'),0)
 END
 END
 Stock,
@@ -754,11 +755,11 @@ ELSE
 CASE WHEN ModoVenta = 'Pesaje' THEN
 	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Pesaje')
 	-
-	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Pesaje'),0)
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Pesaje' AND k1.UM != 'Bulto'),0)
 ELSE
 	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Multi')
 	-
-	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Multi'),0)
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Multi' AND k1.UM = 'UND P'),0)
 END
 END
 ) 
@@ -768,18 +769,18 @@ Sobres
 *
 (
 CASE WHEN ModoVenta = 'Unidad' THEN
-	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Unidad')
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Unidad')
 	-
-	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Unidad'),0)
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Unidad'),0)
 ELSE
 CASE WHEN ModoVenta = 'Pesaje' THEN
-	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Pesaje')
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Pesaje')
 	-
-	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Pesaje'),0)
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Pesaje' AND k1.UM != 'Bulto'),0)
 ELSE
-	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Multi')
+	(SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Entrada +') AND k1.ModoVenta = 'Multi')
 	-
-	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Multi'),0)
+	ISNULL((SELECT SUM(k1.Cantidad) FROM Kardex k1 WHERE (k1.Item = k0.Item AND k1.movimiento = 'Salida -') AND k1.ModoVenta = 'Multi' AND k1.UM = 'Sobre'),0)
 END
 END
 ) 
@@ -816,6 +817,7 @@ OR K0.Referencia = @v_buscar OR K0.CodigoBarras = @v_buscar OR K0.Nombre = @v_bu
 GROUP BY Item,ModoVenta,SubCantidad,Sobres
 ORDER BY Item
 END
+
 	GO
 	CREATE PROC [dbo].[sp_consultar_Ventas]
 		@v_buscar VARCHAR(300),
@@ -863,6 +865,176 @@ END
 	LEFT JOIN SistemaSeparado sp ON sp.Codigo = v.SistemaSeparado
 	LEFT JOIN Cliente c2 ON c2.Codigo = sp.Cliente
 	LEFT JOIN Mensajero msj ON msj.Codigo = d.Mensajero
+    WHERE ((p.Item = CASE WHEN ISNUMERIC(@v_buscar) = 1 THEN @v_buscar ELSE 0 END OR p.Referencia = @v_buscar OR p.CodigoBarras = @v_buscar) 
+	OR CONCAT(v.NombreDocumento,'-',v.ConsecutivoDocumento) = @v_buscar)
+	AND CONVERT(date,v.Fecha) BETWEEN @FechaIni AND @FechaFin
+	END
+	END
+	GO
+		CREATE PROC sp_consultar_Ventas2
+		@v_buscar VARCHAR(300),
+	@v_tipo_busqueda AS VARCHAR(20),
+	@FechaIni AS DATE,
+	@FechaFin AS DATE
+	AS
+	IF(@v_tipo_busqueda = 'Contiene')
+	BEGIN
+SELECT 
+v.Codigo,v.Fecha,CONCAT(v.NombreDocumento,'-',v.ConsecutivoDocumento) Factura
+,p.Item
+,p.Referencia
+,p.CodigoBarras
+,p.Nombre 
+,v.ModoVenta
+,v.UM
+,v.Cantidad
+,CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+(v.Cantidad * p.SubCantidad) * v.Costo
+ELSE
+CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+(v.Cantidad * p.Sobres) * v.Costo
+ELSE
+CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto' THEN
+(v.Cantidad * p.SubCantidad) * v.Costo
+ELSE
+CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' THEN
+v.Cantidad  * v.Costo
+END
+END
+END
+END Costo
+,CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+ELSE
+CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+(v.Cantidad * p.Sobres) *  v.PrecioVenta
+ELSE
+CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto'  THEN
+(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+ELSE
+CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' THEN
+v.Cantidad  *  v.PrecioVenta
+END
+END
+END
+END PrecioVenta
+,v.descuento
+,
+(
+(CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+ELSE
+CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+(v.Cantidad * p.Sobres) *  v.PrecioVenta
+ELSE
+CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto'  THEN
+(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+ELSE
+CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' THEN
+v.Cantidad  *  v.PrecioVenta
+END
+END
+END
+END)
+* 
+(v.descuento/100)) ValorDescuento,
+v.Efectivo,v.Tdebito,
+	v.NumBaucherDebito,v.Tcredito,v.NumBaucherCredito,v.Cambio,v.Total,
+	pr.DNI+'-'+pr.Nombre Proveedor,
+	c.DNI +'-'+c.Nombre Cliente,CONCAT(d.Estado,' - ',d.Codigo,' - ',d.Celular,' - ',
+	d.Nombre,' - ',d.Direccion,' - ',msj.DNI,' - ',msj.Nombre,' - ',d.ValorDomicilio) Domicilio, 
+	CONCAT(sp.Estado,' - ',sp.Codigo,' - ',c2.DNI,' - ',c2.Nombre) SistemaSeparado
+FROM 
+Venta v
+INNER JOIN Producto p ON p.Item = v.Producto
+INNER JOIN Proveedor pr ON pr.DNI = v.Proveedor
+INNER JOIN Cliente c ON c.Codigo = v.Cliente
+LEFT JOIN Domicilio d ON d.Codigo = v.Domicilio
+LEFT JOIN SistemaSeparado sp ON sp.Codigo = v.SistemaSeparado
+LEFT JOIN Cliente c2 ON c2.Codigo = sp.Cliente
+LEFT JOIN Mensajero msj ON msj.Codigo = d.Mensajero
+	WHERE ((p.Item  LIKE @v_buscar+'%' OR p.Referencia  LIKE @v_buscar+'%' OR p.CodigoBarras  LIKE @v_buscar+'%') 
+	OR CONCAT(v.NombreDocumento,'-',v.ConsecutivoDocumento) LIKE @v_buscar+'%')
+	AND CONVERT(date,v.Fecha) BETWEEN @FechaIni AND @FechaFin
+	END
+	ELSE
+	BEGIN
+	IF(@v_tipo_busqueda = 'Exactamente')
+	BEGIN
+	SELECT 
+v.Codigo,v.Fecha,CONCAT(v.NombreDocumento,'-',v.ConsecutivoDocumento) Factura
+,p.Item
+,p.Referencia
+,p.CodigoBarras
+,p.Nombre 
+,v.ModoVenta
+,v.UM
+,v.Cantidad
+,CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+(v.Cantidad * p.SubCantidad) * v.Costo
+ELSE
+CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+(v.Cantidad * p.Sobres) * v.Costo
+ELSE
+CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto' THEN
+(v.Cantidad * p.SubCantidad) * v.Costo
+ELSE
+CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' THEN
+v.Cantidad  * v.Costo
+END
+END
+END
+END Costo
+,CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+ELSE
+CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+(v.Cantidad * p.Sobres) *  v.PrecioVenta
+ELSE
+CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto'  THEN
+(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+ELSE
+CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' THEN
+v.Cantidad  *  v.PrecioVenta
+END
+END
+END
+END PrecioVenta
+,v.descuento
+,
+(
+(CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+ELSE
+CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+(v.Cantidad * p.Sobres) *  v.PrecioVenta
+ELSE
+CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto'  THEN
+(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+ELSE
+CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' THEN
+v.Cantidad  *  v.PrecioVenta
+END
+END
+END
+END)
+* 
+(v.descuento/100)) ValorDescuento,
+v.Efectivo,v.Tdebito,
+	v.NumBaucherDebito,v.Tcredito,v.NumBaucherCredito,v.Cambio,v.Total,
+	pr.DNI+'-'+pr.Nombre Proveedor,
+	c.DNI +'-'+c.Nombre Cliente,CONCAT(d.Estado,' - ',d.Codigo,' - ',d.Celular,' - ',
+	d.Nombre,' - ',d.Direccion,' - ',msj.DNI,' - ',msj.Nombre,' - ',d.ValorDomicilio) Domicilio, 
+	CONCAT(sp.Estado,' - ',sp.Codigo,' - ',c2.DNI,' - ',c2.Nombre) SistemaSeparado
+FROM 
+Venta v
+INNER JOIN Producto p ON p.Item = v.Producto
+INNER JOIN Proveedor pr ON pr.DNI = v.Proveedor
+INNER JOIN Cliente c ON c.Codigo = v.Cliente
+LEFT JOIN Domicilio d ON d.Codigo = v.Domicilio
+LEFT JOIN SistemaSeparado sp ON sp.Codigo = v.SistemaSeparado
+LEFT JOIN Cliente c2 ON c2.Codigo = sp.Cliente
+LEFT JOIN Mensajero msj ON msj.Codigo = d.Mensajero
     WHERE ((p.Item = CASE WHEN ISNUMERIC(@v_buscar) = 1 THEN @v_buscar ELSE 0 END OR p.Referencia = @v_buscar OR p.CodigoBarras = @v_buscar) 
 	OR CONCAT(v.NombreDocumento,'-',v.ConsecutivoDocumento) = @v_buscar)
 	AND CONVERT(date,v.Fecha) BETWEEN @FechaIni AND @FechaFin
@@ -1221,7 +1393,7 @@ END
 	END
 	GO
 	
-	CREATE PROCEDURE sp_consultar_producto
+	CREATE PROCEDURE [dbo].[sp_consultar_producto]
 	@v_tipo_consulta AS VARCHAR(200),
 	@v_buscar AS VARCHAR(200),
 	@Item AS INT,
@@ -1357,20 +1529,40 @@ END
 	SET @v_variable = (SELECT ISNUMERIC(@v_buscar))
 	IF(@v_variable = 1)
 	BEGIN
+	IF(CONVERT(numeric,@v_buscar) < 2147483647)
+	BEGIN
+		SELECT p.Item,p.Referencia,p.Descripcion,p.Nombre,p.IVA,p.UnidadMedida,um.Nombre Nombre_Unidad_medida,p.Medida,
+		P.Estado,est.Nombre Nombre_Estado,p.Categoria,ct.Nombre Nombre_Categoria,P.Marca,
+		m.Nombre Nombre_Marca,p.Proveedor,p.ModoVenta,p.Cantidad,p.Costo,p.PrecioVenta,p.CodigoBarras,
+		p.SubCantidad,p.ValorSubcantidad,p.Sobres,p.ValorSobre,p.Foto,
+		p.movimiento,p.Ubicacion,ub.Nombre Nombre_ubicacion,p.Salida_para,slp.Nombre Nombre_Salida_para,
+		p.Stock_minimo,p.Stock_maximo
+		FROM Producto p
+		INNER JOIN UnidadMedida um ON um.Codigo = p.UnidadMedida
+		INNER JOIN Estado est ON est.Codigo = p.Estado
+		INNER JOIN Categoria ct ON ct.Codigo = p.Categoria
+		INNER JOIN Marca m ON m.Codigo = p.Marca
+		INNER JOIN Ubicacion ub ON ub.Codigo = p.Ubicacion
+		INNER JOIN SalidaPara slp ON slp.Codigo = p.Salida_para
+		WHERE p.Item = @v_buscar OR p.Referencia = @v_buscar OR p.CodigoBarras = @v_buscar OR p.Nombre = @v_buscar
+	END
+	ELSE
+	BEGIN
 	SELECT p.Item,p.Referencia,p.Descripcion,p.Nombre,p.IVA,p.UnidadMedida,um.Nombre Nombre_Unidad_medida,p.Medida,
-	P.Estado,est.Nombre Nombre_Estado,p.Categoria,ct.Nombre Nombre_Categoria,P.Marca,
-	m.Nombre Nombre_Marca,p.Proveedor,p.ModoVenta,p.Cantidad,p.Costo,p.PrecioVenta,p.CodigoBarras,
-	p.SubCantidad,p.ValorSubcantidad,p.Sobres,p.ValorSobre,p.Foto,
-	p.movimiento,p.Ubicacion,ub.Nombre Nombre_ubicacion,p.Salida_para,slp.Nombre Nombre_Salida_para,
-	p.Stock_minimo,p.Stock_maximo
-	FROM Producto p
-	INNER JOIN UnidadMedida um ON um.Codigo = p.UnidadMedida
-	INNER JOIN Estado est ON est.Codigo = p.Estado
-	INNER JOIN Categoria ct ON ct.Codigo = p.Categoria
-	INNER JOIN Marca m ON m.Codigo = p.Marca
-	INNER JOIN Ubicacion ub ON ub.Codigo = p.Ubicacion
-	INNER JOIN SalidaPara slp ON slp.Codigo = p.Salida_para
-	WHERE p.Item = @v_buscar OR p.Referencia = @v_buscar OR p.CodigoBarras = @v_buscar OR p.Nombre = @v_buscar
+		P.Estado,est.Nombre Nombre_Estado,p.Categoria,ct.Nombre Nombre_Categoria,P.Marca,
+		m.Nombre Nombre_Marca,p.Proveedor,p.ModoVenta,p.Cantidad,p.Costo,p.PrecioVenta,p.CodigoBarras,
+		p.SubCantidad,p.ValorSubcantidad,p.Sobres,p.ValorSobre,p.Foto,
+		p.movimiento,p.Ubicacion,ub.Nombre Nombre_ubicacion,p.Salida_para,slp.Nombre Nombre_Salida_para,
+		p.Stock_minimo,p.Stock_maximo
+		FROM Producto p
+		INNER JOIN UnidadMedida um ON um.Codigo = p.UnidadMedida
+		INNER JOIN Estado est ON est.Codigo = p.Estado
+		INNER JOIN Categoria ct ON ct.Codigo = p.Categoria
+		INNER JOIN Marca m ON m.Codigo = p.Marca
+		INNER JOIN Ubicacion ub ON ub.Codigo = p.Ubicacion
+		INNER JOIN SalidaPara slp ON slp.Codigo = p.Salida_para
+		WHERE p.Referencia = @v_buscar OR p.CodigoBarras = @v_buscar OR p.Nombre = @v_buscar
+	END
 	END
 	ELSE
 	BEGIN
@@ -1397,20 +1589,40 @@ END
 	SET @v_variable = (SELECT ISNUMERIC(@v_buscar))
 	IF(@v_variable = 1)
 	BEGIN
-	SELECT p.Item,p.Referencia,p.Descripcion,p.Nombre,p.IVA,p.UnidadMedida,um.Nombre Nombre_Unidad_medida,p.Medida,
-	P.Estado,est.Nombre Nombre_Estado,p.Categoria,ct.Nombre Nombre_Categoria,P.Marca,
-	m.Nombre Nombre_Marca,p.Proveedor,p.ModoVenta,p.Cantidad,p.Costo,p.PrecioVenta,p.CodigoBarras,
-	p.SubCantidad,p.ValorSubcantidad,p.Sobres,p.ValorSobre,p.Foto,
-	p.movimiento,p.Ubicacion,ub.Nombre Nombre_ubicacion,p.Salida_para,slp.Nombre Nombre_Salida_para,
-	p.Stock_minimo,p.Stock_maximo
-	FROM Producto p
-	INNER JOIN UnidadMedida um ON um.Codigo = p.UnidadMedida
-	INNER JOIN Estado est ON est.Codigo = p.Estado
-	INNER JOIN Categoria ct ON ct.Codigo = p.Categoria
-	INNER JOIN Marca m ON m.Codigo = p.Marca
-	INNER JOIN Ubicacion ub ON ub.Codigo = p.Ubicacion
-	INNER JOIN SalidaPara slp ON slp.Codigo = p.Salida_para
-	WHERE p.Item = @v_buscar OR p.Referencia = @v_buscar OR p.CodigoBarras = @v_buscar
+	IF(CONVERT(numeric,@v_buscar) < 2147483647)
+	BEGIN
+		SELECT p.Item,p.Referencia,p.Descripcion,p.Nombre,p.IVA,p.UnidadMedida,um.Nombre Nombre_Unidad_medida,p.Medida,
+		P.Estado,est.Nombre Nombre_Estado,p.Categoria,ct.Nombre Nombre_Categoria,P.Marca,
+		m.Nombre Nombre_Marca,p.Proveedor,p.ModoVenta,p.Cantidad,p.Costo,p.PrecioVenta,p.CodigoBarras,
+		p.SubCantidad,p.ValorSubcantidad,p.Sobres,p.ValorSobre,p.Foto,
+		p.movimiento,p.Ubicacion,ub.Nombre Nombre_ubicacion,p.Salida_para,slp.Nombre Nombre_Salida_para,
+		p.Stock_minimo,p.Stock_maximo
+		FROM Producto p
+		INNER JOIN UnidadMedida um ON um.Codigo = p.UnidadMedida
+		INNER JOIN Estado est ON est.Codigo = p.Estado
+		INNER JOIN Categoria ct ON ct.Codigo = p.Categoria
+		INNER JOIN Marca m ON m.Codigo = p.Marca
+		INNER JOIN Ubicacion ub ON ub.Codigo = p.Ubicacion
+		INNER JOIN SalidaPara slp ON slp.Codigo = p.Salida_para
+		WHERE p.Item = @v_buscar OR p.Referencia = @v_buscar OR p.CodigoBarras = @v_buscar
+	END
+	ELSE
+	BEGIN
+		SELECT p.Item,p.Referencia,p.Descripcion,p.Nombre,p.IVA,p.UnidadMedida,um.Nombre Nombre_Unidad_medida,p.Medida,
+		P.Estado,est.Nombre Nombre_Estado,p.Categoria,ct.Nombre Nombre_Categoria,P.Marca,
+		m.Nombre Nombre_Marca,p.Proveedor,p.ModoVenta,p.Cantidad,p.Costo,p.PrecioVenta,p.CodigoBarras,
+		p.SubCantidad,p.ValorSubcantidad,p.Sobres,p.ValorSobre,p.Foto,
+		p.movimiento,p.Ubicacion,ub.Nombre Nombre_ubicacion,p.Salida_para,slp.Nombre Nombre_Salida_para,
+		p.Stock_minimo,p.Stock_maximo
+		FROM Producto p
+		INNER JOIN UnidadMedida um ON um.Codigo = p.UnidadMedida
+		INNER JOIN Estado est ON est.Codigo = p.Estado
+		INNER JOIN Categoria ct ON ct.Codigo = p.Categoria
+		INNER JOIN Marca m ON m.Codigo = p.Marca
+		INNER JOIN Ubicacion ub ON ub.Codigo = p.Ubicacion
+		INNER JOIN SalidaPara slp ON slp.Codigo = p.Salida_para
+		WHERE p.Referencia = @v_buscar OR p.CodigoBarras = @v_buscar
+	END	
 	END
 	ELSE
 	BEGIN
@@ -1438,6 +1650,7 @@ END
 	END
 	END
 	END
+
 
 	GO
 	CREATE PROCEDURE sp_consulta_kardex

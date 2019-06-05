@@ -1,31 +1,29 @@
 
-----1 Agregar unidades de medida
---USE SBX_ESTANDAR
---INSERT INTO DB_SBX.dbo.UnidadMedida
---SELECT Nombre FROM UnidadMedida
---WHERE id IN(10,12,13)
-----2 Agregar categorias
---USE SBX_ESTANDAR
---INSERT INTO DB_SBX.dbo.Categoria
---SELECT Nombre FROM Categoria
---WHERE id != 4
-----3 Agregar marca
---USE SBX_ESTANDAR
---INSERT INTO DB_SBX.dbo.Marca
---SELECT Nombre FROM Marca
---WHERE ID != 11
-----4 Agregar proveedor
---INSERT INTO DB_SBX.dbo.Proveedor
---SELECT DNI,RazonSocial,m.Nombre Ciudad,Direccion,TelefonoFijo,Celular1,Email,SitioWeb FROM Proveedor pr
---INNER JOIN Municipio m ON m.Codigo = pr.Municipio
---WHERE DNI != 0
+--1 Agregar unidades de medida
+USE SBX_ESTANDAR
+INSERT INTO DB_SBX.dbo.UnidadMedida
+SELECT Nombre FROM UnidadMedida
+WHERE id IN(10,12,13)
+--2 Agregar categorias
+USE SBX_ESTANDAR
+INSERT INTO DB_SBX.dbo.Categoria
+SELECT Nombre FROM Categoria
+WHERE id != 4
+--3 Agregar marca
+USE SBX_ESTANDAR
+INSERT INTO DB_SBX.dbo.Marca
+SELECT Nombre FROM Marca
+WHERE ID != 11
+--4 Agregar proveedor
+INSERT INTO DB_SBX.dbo.Proveedor
+SELECT DNI,RazonSocial,m.Nombre Ciudad,Direccion,TelefonoFijo,Celular1,Email,SitioWeb FROM Proveedor pr
+INNER JOIN Municipio m ON m.Codigo = pr.Municipio
+WHERE DNI != 0
 
---SELECT * FROM DB_SBX.dbo.Producto
-
---INSERT INTo DB_SBX.dbo.Producto
---(Referencia,Nombre,Descripcion,IVA,UnidadMedida,Medida,Estado,Categoria,Marca,Proveedor,
---ModoVenta,Ubicacion,Salida_para,Stock_minimo,Stock_maximo,Cantidad,Costo,PrecioVenta,
---CodigoBarras,SubCantidad,ValorSubcantidad,Sobres,ValorSobre,Foto,Usuario,FechaRegistro,movimiento)
+INSERT INTo DB_SBX.dbo.Producto
+(Referencia,Nombre,Descripcion,IVA,UnidadMedida,Medida,Estado,Categoria,Marca,Proveedor,
+ModoVenta,Ubicacion,Salida_para,Stock_minimo,Stock_maximo,Cantidad,Costo,PrecioVenta,
+CodigoBarras,SubCantidad,ValorSubcantidad,Sobres,ValorSobre,Foto,Usuario,FechaRegistro,movimiento)
 
 SELECT '' Referencia,p.Nombre,p.Descripcion,p.IVA,
 ISNULL((SELECT um2.Codigo FROM  DB_SBX.dbo.UnidadMedida um2 WHERE um2.Nombre = um.Nombre),1) UnidadMedida,
