@@ -134,6 +134,9 @@ USE DB_SBX
 	FOREIGN KEY(Salida_para) REFERENCES SalidaPara(Codigo) ON DELETE CASCADE
 	)
 	GO
+	ALTER TABLE Producto 
+    ADD  DescuentoProveedor FLOAT,FechaVencimiento DATE
+	GO
 		CREATE TABLE Bit_Kardex(
 	Codigo INT IDENTITY(1,1) PRIMARY KEY,
 	Fecha DATETIME,
@@ -230,6 +233,9 @@ USE DB_SBX
 	FOREIGN KEY(SistemaSeparado) REFERENCES SistemaSeparado(Codigo) ON DELETE CASCADE
 	)
 	GO
+	ALTER TABLE Venta
+    ADD DescuentoProveedor FLOAT
+	GO
 	CREATE TABLE Kardex(
 	Codigo INT IDENTITY(1,1) PRIMARY KEY,
 	CodigoVenta INT,
@@ -265,6 +271,9 @@ USE DB_SBX
 	UM VARCHAR(20),
 	FOREIGN KEY(Item) REFERENCES Producto(Item) ON DELETE CASCADE
 	)
+	GO
+	ALTER TABLE Kardex
+    ADD DescuentoProveedor FLOAT
 	GO
 ----Usuarios y roles
 CREATE TABLE Rol(
@@ -523,11 +532,11 @@ FOREIGN KEY(Gasto) REFERENCES Gastos(codigo)
 	BEGIN
 	INSERT INTO Kardex (CodigoVenta,Item,Referencia,Nombre,Descripcion,IVA,UnidadMedida,Medida,Estado,Categoria,Marca,DNIproveedor,Proveedor,
 	ModoVenta,Cantidad,Costo,PrecioVenta,CodigoBarras,SubCantidad,ValorSubcantidad,Sobres,ValorSobre,Usuario,FechaRegistro,
-	Accion,movimiento,Ubicacion,Salida_para,Stock_minimo,Stock_maximo,UM)
+	Accion,movimiento,Ubicacion,Salida_para,Stock_minimo,Stock_maximo,UM,DescuentoProveedor)
 	SELECT v.Codigo,p.Item,p.Referencia,p.Nombre,p.Descripcion,v.IVA,um.Nombre,p.Medida,0,ct.Nombre,
 	m.Nombre,pr.DNI,pr.Nombre,p.ModoVenta,v.Cantidad,v.Costo,v.PrecioVenta,p.CodigoBarras,
 	p.SubCantidad,p.ValorSubcantidad,p.Sobres,p.ValorSobre,v.Usuario,SYSDATETIME(),'INSERT-VENTA','Salida -',
-	p.Ubicacion,p.Salida_para,p.Stock_minimo,p.Stock_maximo,v.UM
+	p.Ubicacion,p.Salida_para,p.Stock_minimo,p.Stock_maximo,v.UM,v.DescuentoProveedor
 	FROM Venta v
 	INNER JOIN Producto p ON v.Producto = p.Item
 	INNER JOIN UnidadMedida um ON um.Codigo = p.UnidadMedida
@@ -562,7 +571,7 @@ FOREIGN KEY(Gasto) REFERENCES Gastos(codigo)
 	BEGIN
 	INSERT INTO Kardex (Item,Referencia,Nombre,Descripcion,IVA,UnidadMedida,Medida,Estado,Categoria,Marca,DNIproveedor,Proveedor,
 	ModoVenta,Cantidad,Costo,PrecioVenta,CodigoBarras,SubCantidad,ValorSubcantidad,Sobres,ValorSobre,Usuario,FechaRegistro,
-	Accion,movimiento,Ubicacion,Salida_para,Stock_minimo,Stock_maximo,UM)
+	Accion,movimiento,Ubicacion,Salida_para,Stock_minimo,Stock_maximo,UM,DescuentoProveedor)
 	SELECT p.Item,p.Referencia,p.Nombre,P.Descripcion,p.IVA,um.Nombre,p.Medida,p.Estado,ct.Nombre,m.Nombre,pr.DNI,pr.Nombre,
 	p.ModoVenta,p.Cantidad,p.Costo,p.PrecioVenta,p.CodigoBarras,p.SubCantidad,p.ValorSubcantidad,p.Sobres,p.ValorSobre,
 	p.Usuario,SYSDATETIME(),'INSERT-INVENTARIO',p.movimiento,p.Ubicacion,p.Salida_para,p.Stock_minimo,p.Stock_maximo,
@@ -574,7 +583,7 @@ FOREIGN KEY(Gasto) REFERENCES Gastos(codigo)
 		ELSE
 		'Caja'
 		END
-	END
+	END, p.DescuentoProveedor
 	FROM Producto p
 	INNER JOIN UnidadMedida um ON um.Codigo = p.UnidadMedida
 	INNER JOIN Categoria ct ON ct.Codigo = p.Categoria
@@ -589,10 +598,10 @@ FOREIGN KEY(Gasto) REFERENCES Gastos(codigo)
 	BEGIN
 	INSERT INTO Kardex (Item,Referencia,Nombre,Descripcion,IVA,UnidadMedida,Medida,Estado,Categoria,Marca,DNIproveedor,Proveedor,
 	ModoVenta,Cantidad,Costo,PrecioVenta,CodigoBarras,SubCantidad,ValorSubcantidad,Sobres,ValorSobre,Usuario,FechaRegistro
-	,Accion,movimiento,Ubicacion,Salida_para,Stock_minimo,Stock_maximo)
+	,Accion,movimiento,Ubicacion,Salida_para,Stock_minimo,Stock_maximo,DescuentoProveedor)
 	SELECT p.Item,p.Referencia,p.Nombre,P.Descripcion,p.IVA,um.Nombre,p.Medida,p.Estado,ct.Nombre,m.Nombre,pr.DNI,pr.Nombre,
 	p.ModoVenta,p.Cantidad,p.Costo,p.PrecioVenta,p.CodigoBarras,p.SubCantidad,p.ValorSubcantidad,p.Sobres,p.ValorSobre,
-	p.Usuario,SYSDATETIME(),'UPDATE-INVENTARIO',p.movimiento,p.Ubicacion,p.Salida_para,p.Stock_minimo,p.Stock_maximo
+	p.Usuario,SYSDATETIME(),'UPDATE-INVENTARIO',p.movimiento,p.Ubicacion,p.Salida_para,p.Stock_minimo,p.Stock_maximo,p.DescuentoProveedor
 	FROM Producto p
 	INNER JOIN UnidadMedida um ON um.Codigo = p.UnidadMedida
 	INNER JOIN Categoria ct ON ct.Codigo = p.Categoria
@@ -688,16 +697,16 @@ END
 END
 ) 
 StockSobres,
-(SELECT k1.Costo FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Costo,
+(SELECT (k1.Costo - (k1.Costo * (k1.DescuentoProveedor/100))) + (((k1.Costo - (k1.Costo * (k1.DescuentoProveedor/100)))) * (k1.IVA/100)) FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Costo,
 (SELECT k1.PrecioVenta FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) PrecioVenta,
-(ISNULL((SELECT k1.Costo FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item))
+(ISNULL((SELECT (k1.Costo - (k1.Costo * (k1.DescuentoProveedor/100))) + (((k1.Costo - (k1.Costo * (k1.DescuentoProveedor/100)))) * (k1.IVA/100)) FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item))
 /
 CASE WHEN ModoVenta != 'Unidad' THEN
 (SELECT k1.SubCantidad FROM Kardex k1 WHERE (k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) AND k1.ModoVenta != 'Unidad')
 END,0))
 CostoSubCantidad,
 (SELECT k1.ValorSubcantidad FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) ValorSubcantidad,
-(ISNULL((SELECT k1.Costo FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item))
+(ISNULL((SELECT (k1.Costo - (k1.Costo * (k1.DescuentoProveedor/100))) + (((k1.Costo - (k1.Costo * (k1.DescuentoProveedor/100)))) * (k1.IVA/100)) FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item))
 /
 CASE WHEN ModoVenta = 'Multi' THEN
 (SELECT k1.Sobres FROM Kardex k1 WHERE (k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) AND k1.ModoVenta = 'Multi')
@@ -785,16 +794,16 @@ END
 END
 ) 
 StockSobres,
-(SELECT k1.Costo FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Costo,
+(SELECT (k1.Costo - (k1.Costo * (k1.DescuentoProveedor/100))) + (((k1.Costo - (k1.Costo * (k1.DescuentoProveedor/100)))) * (k1.IVA/100)) FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) Costo,
 (SELECT k1.PrecioVenta FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) PrecioVenta,
-(ISNULL((SELECT k1.Costo FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item))
+(ISNULL((SELECT (k1.Costo - (k1.Costo * (k1.DescuentoProveedor/100))) + (((k1.Costo - (k1.Costo * (k1.DescuentoProveedor/100)))) * (k1.IVA/100)) FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item))
 /
 CASE WHEN ModoVenta != 'Unidad' THEN
 (SELECT k1.SubCantidad FROM Kardex k1 WHERE (k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) AND k1.ModoVenta != 'Unidad')
 END,0))
 CostoSubCantidad,
 (SELECT k1.ValorSubcantidad FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) ValorSubcantidad,
-(ISNULL((SELECT k1.Costo FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item))
+(ISNULL((SELECT (k1.Costo - (k1.Costo * (k1.DescuentoProveedor/100))) + (((k1.Costo - (k1.Costo * (k1.DescuentoProveedor/100)))) * (k1.IVA/100)) FROM Kardex k1 WHERE k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item))
 /
 CASE WHEN ModoVenta = 'Multi' THEN
 (SELECT k1.Sobres FROM Kardex k1 WHERE (k1.Item = Item AND k1.Codigo = (SELECT MAX(k2.Codigo) FROM Kardex k2 WHERE k2.Item = k0.Item)) AND k1.ModoVenta = 'Multi')
@@ -872,7 +881,7 @@ END
 	END
 	GO
 		CREATE PROC sp_consultar_Ventas2
-		@v_buscar VARCHAR(300),
+			@v_buscar VARCHAR(300),
 	@v_tipo_busqueda AS VARCHAR(20),
 	@FechaIni AS DATE,
 	@FechaFin AS DATE
@@ -889,16 +898,16 @@ v.Codigo,v.Fecha,CONCAT(v.NombreDocumento,'-',v.ConsecutivoDocumento) Factura
 ,v.UM
 ,v.Cantidad
 ,CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
-(v.Cantidad * p.SubCantidad) * v.Costo
+(v.Cantidad * p.SubCantidad) * ((v.Costo - (v.Costo * (v.DescuentoProveedor/100))) + (((v.Costo - (v.Costo * (v.DescuentoProveedor/100)))) * (v.IVA/100)))
 ELSE
 CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
-(v.Cantidad * p.Sobres) * v.Costo
+(v.Cantidad * p.Sobres) * ((v.Costo - (v.Costo * (v.DescuentoProveedor/100))) + (((v.Costo - (v.Costo * (v.DescuentoProveedor/100)))) * (v.IVA/100)))
 ELSE
 CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto' THEN
-(v.Cantidad * p.SubCantidad) * v.Costo
+(v.Cantidad * p.SubCantidad) * ((v.Costo - (v.Costo * (v.DescuentoProveedor/100))) + (((v.Costo - (v.Costo * (v.DescuentoProveedor/100)))) * (v.IVA/100)))
 ELSE
 CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' THEN
-v.Cantidad  * v.Costo
+v.Cantidad  * ((v.Costo - (v.Costo * (v.DescuentoProveedor/100))) + (((v.Costo - (v.Costo * (v.DescuentoProveedor/100)))) * (v.IVA/100)))
 END
 END
 END
@@ -971,16 +980,16 @@ v.Codigo,v.Fecha,CONCAT(v.NombreDocumento,'-',v.ConsecutivoDocumento) Factura
 ,v.UM
 ,v.Cantidad
 ,CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
-(v.Cantidad * p.SubCantidad) * v.Costo
+(v.Cantidad * p.SubCantidad) * ((v.Costo - (v.Costo * (v.DescuentoProveedor/100))) + (((v.Costo - (v.Costo * (v.DescuentoProveedor/100)))) * (v.IVA/100)))
 ELSE
 CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
-(v.Cantidad * p.Sobres) * v.Costo
+(v.Cantidad * p.Sobres) * ((v.Costo - (v.Costo * (v.DescuentoProveedor/100))) + (((v.Costo - (v.Costo * (v.DescuentoProveedor/100)))) * (v.IVA/100)))
 ELSE
 CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto' THEN
-(v.Cantidad * p.SubCantidad) * v.Costo
+(v.Cantidad * p.SubCantidad) * ((v.Costo - (v.Costo * (v.DescuentoProveedor/100))) + (((v.Costo - (v.Costo * (v.DescuentoProveedor/100)))) * (v.IVA/100)))
 ELSE
 CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' THEN
-v.Cantidad  * v.Costo
+v.Cantidad  * ((v.Costo - (v.Costo * (v.DescuentoProveedor/100))) + (((v.Costo - (v.Costo * (v.DescuentoProveedor/100)))) * (v.IVA/100)))
 END
 END
 END
@@ -1488,6 +1497,7 @@ LEFT JOIN Mensajero msj ON msj.Codigo = d.Mensajero
 	(SELECT ISNULL(SUM(Cantidad),0)  FROM Kardex WHERE movimiento = 'Salida -' AND Item = p.Item)) * p.SubCantidad stockSubcantidad,
 	((SELECT ISNULL(SUM(Cantidad),0)  FROM Kardex WHERE movimiento = 'Entrada +' AND Item = p.Item) -
 	(SELECT ISNULL(SUM(Cantidad),0)  FROM Kardex WHERE movimiento = 'Salida -' AND Item = p.Item)) * p.Sobres stockSobres
+	,prv.Nombre Nom_proveedor,p.DescuentoProveedor ,p.FechaVencimiento
 	FROM Producto p
 	INNER JOIN UnidadMedida um ON um.Codigo = p.UnidadMedida
 	INNER JOIN Estado est ON est.Codigo = p.Estado
@@ -1495,6 +1505,7 @@ LEFT JOIN Mensajero msj ON msj.Codigo = d.Mensajero
 	INNER JOIN Marca m ON m.Codigo = p.Marca
 	INNER JOIN Ubicacion ub ON ub.Codigo = p.Ubicacion
 	INNER JOIN SalidaPara slp ON slp.Codigo = p.Salida_para
+	INNER JOIN Proveedor prv ON prv.DNI = p.Proveedor
 	WHERE p.Item LIKE @v_buscar+'%' OR p.Referencia LIKE @v_buscar+'%' OR p.CodigoBarras LIKE @v_buscar+'%' OR p.Nombre LIKE @v_buscar+'%'
 	END
 	ELSE
@@ -1513,6 +1524,7 @@ LEFT JOIN Mensajero msj ON msj.Codigo = d.Mensajero
 	(SELECT ISNULL(SUM(Cantidad),0)  FROM Kardex WHERE movimiento = 'Salida -' AND Item = @Item)) * p.SubCantidad stockSubcantidad,
 	((SELECT ISNULL(SUM(Cantidad),0)  FROM Kardex WHERE movimiento = 'Entrada +' AND Item = @Item) -
 	(SELECT ISNULL(SUM(Cantidad),0)  FROM Kardex WHERE movimiento = 'Salida -' AND Item = @Item)) * p.Sobres stockSobres
+	,prv.Nombre Nom_proveedor,p.DescuentoProveedor ,p.FechaVencimiento
 	FROM Producto p
 	INNER JOIN UnidadMedida um ON um.Codigo = p.UnidadMedida
 	INNER JOIN Estado est ON est.Codigo = p.Estado
@@ -1520,6 +1532,7 @@ LEFT JOIN Mensajero msj ON msj.Codigo = d.Mensajero
 	INNER JOIN Marca m ON m.Codigo = p.Marca
 	INNER JOIN Ubicacion ub ON ub.Codigo = p.Ubicacion
 	INNER JOIN SalidaPara slp ON slp.Codigo = p.Salida_para
+	INNER JOIN Proveedor prv ON prv.DNI = p.Proveedor
 	WHERE p.Item =  @Item
 	END
 	ELSE
@@ -1536,7 +1549,7 @@ LEFT JOIN Mensajero msj ON msj.Codigo = d.Mensajero
 		m.Nombre Nombre_Marca,p.Proveedor,p.ModoVenta,p.Cantidad,p.Costo,p.PrecioVenta,p.CodigoBarras,
 		p.SubCantidad,p.ValorSubcantidad,p.Sobres,p.ValorSobre,p.Foto,
 		p.movimiento,p.Ubicacion,ub.Nombre Nombre_ubicacion,p.Salida_para,slp.Nombre Nombre_Salida_para,
-		p.Stock_minimo,p.Stock_maximo
+		p.Stock_minimo,p.Stock_maximo,p.DescuentoProveedor
 		FROM Producto p
 		INNER JOIN UnidadMedida um ON um.Codigo = p.UnidadMedida
 		INNER JOIN Estado est ON est.Codigo = p.Estado
@@ -1553,7 +1566,7 @@ LEFT JOIN Mensajero msj ON msj.Codigo = d.Mensajero
 		m.Nombre Nombre_Marca,p.Proveedor,p.ModoVenta,p.Cantidad,p.Costo,p.PrecioVenta,p.CodigoBarras,
 		p.SubCantidad,p.ValorSubcantidad,p.Sobres,p.ValorSobre,p.Foto,
 		p.movimiento,p.Ubicacion,ub.Nombre Nombre_ubicacion,p.Salida_para,slp.Nombre Nombre_Salida_para,
-		p.Stock_minimo,p.Stock_maximo
+		p.Stock_minimo,p.Stock_maximo,p.DescuentoProveedor
 		FROM Producto p
 		INNER JOIN UnidadMedida um ON um.Codigo = p.UnidadMedida
 		INNER JOIN Estado est ON est.Codigo = p.Estado
@@ -1571,7 +1584,7 @@ LEFT JOIN Mensajero msj ON msj.Codigo = d.Mensajero
 	m.Nombre Nombre_Marca,p.Proveedor,p.ModoVenta,p.Cantidad,p.Costo,p.PrecioVenta,p.CodigoBarras,
 	p.SubCantidad,p.ValorSubcantidad,p.Sobres,p.ValorSobre,p.Foto,
 	p.movimiento,p.Ubicacion,ub.Nombre Nombre_ubicacion,p.Salida_para,slp.Nombre Nombre_Salida_para,
-	p.Stock_minimo,p.Stock_maximo
+	p.Stock_minimo,p.Stock_maximo,p.DescuentoProveedor
 	FROM Producto p
 	INNER JOIN UnidadMedida um ON um.Codigo = p.UnidadMedida
 	INNER JOIN Estado est ON est.Codigo = p.Estado
@@ -1596,7 +1609,7 @@ LEFT JOIN Mensajero msj ON msj.Codigo = d.Mensajero
 		m.Nombre Nombre_Marca,p.Proveedor,p.ModoVenta,p.Cantidad,p.Costo,p.PrecioVenta,p.CodigoBarras,
 		p.SubCantidad,p.ValorSubcantidad,p.Sobres,p.ValorSobre,p.Foto,
 		p.movimiento,p.Ubicacion,ub.Nombre Nombre_ubicacion,p.Salida_para,slp.Nombre Nombre_Salida_para,
-		p.Stock_minimo,p.Stock_maximo
+		p.Stock_minimo,p.Stock_maximo,p.DescuentoProveedor
 		FROM Producto p
 		INNER JOIN UnidadMedida um ON um.Codigo = p.UnidadMedida
 		INNER JOIN Estado est ON est.Codigo = p.Estado
@@ -1613,7 +1626,7 @@ LEFT JOIN Mensajero msj ON msj.Codigo = d.Mensajero
 		m.Nombre Nombre_Marca,p.Proveedor,p.ModoVenta,p.Cantidad,p.Costo,p.PrecioVenta,p.CodigoBarras,
 		p.SubCantidad,p.ValorSubcantidad,p.Sobres,p.ValorSobre,p.Foto,
 		p.movimiento,p.Ubicacion,ub.Nombre Nombre_ubicacion,p.Salida_para,slp.Nombre Nombre_Salida_para,
-		p.Stock_minimo,p.Stock_maximo
+		p.Stock_minimo,p.Stock_maximo,p.DescuentoProveedor
 		FROM Producto p
 		INNER JOIN UnidadMedida um ON um.Codigo = p.UnidadMedida
 		INNER JOIN Estado est ON est.Codigo = p.Estado
@@ -1631,7 +1644,7 @@ LEFT JOIN Mensajero msj ON msj.Codigo = d.Mensajero
 	m.Nombre Nombre_Marca,p.Proveedor,p.ModoVenta,p.Cantidad,p.Costo,p.PrecioVenta,p.CodigoBarras,
 	p.SubCantidad,p.ValorSubcantidad,p.Sobres,p.ValorSobre,p.Foto,
 	p.movimiento,p.Ubicacion,ub.Nombre Nombre_ubicacion,p.Salida_para,slp.Nombre Nombre_Salida_para,
-	p.Stock_minimo,p.Stock_maximo
+	p.Stock_minimo,p.Stock_maximo,p.DescuentoProveedor
 	FROM Producto p
 	INNER JOIN UnidadMedida um ON um.Codigo = p.UnidadMedida
 	INNER JOIN Estado est ON est.Codigo = p.Estado
@@ -1650,6 +1663,7 @@ LEFT JOIN Mensajero msj ON msj.Codigo = d.Mensajero
 	END
 	END
 	END
+
 
 
 	GO
@@ -1789,7 +1803,86 @@ AND CONVERT(date,v.Fecha) BETWEEN @FechaInici AND @FechaFin
 GROUP BY Producto,p.CodigoBarras,p.Referencia,p.Nombre,p.Descripcion
 
 	GO
-
+	CREATE PROC SP_GANACIAS_PERDIDAS
+@FechaIni AS DATE,
+@FechaFin AS DATE
+AS
+SELECT 
+v.Codigo,v.Fecha,CONCAT(v.NombreDocumento,'-',v.ConsecutivoDocumento) Factura
+,p.Item
+,p.Referencia
+,p.CodigoBarras
+,p.Nombre 
+,v.ModoVenta
+,v.UM
+,v.Cantidad
+,CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+(v.Cantidad * p.SubCantidad) * ((v.Costo - (v.Costo * (v.DescuentoProveedor/100))) + (((v.Costo - (v.Costo * (v.DescuentoProveedor/100)))) * (v.IVA/100)))
+ELSE
+CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+(v.Cantidad * p.Sobres) * ((v.Costo - (v.Costo * (v.DescuentoProveedor/100))) + (((v.Costo - (v.Costo * (v.DescuentoProveedor/100)))) * (v.IVA/100)))
+ELSE
+CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto' THEN
+(v.Cantidad * p.SubCantidad) * ((v.Costo - (v.Costo * (v.DescuentoProveedor/100))) + (((v.Costo - (v.Costo * (v.DescuentoProveedor/100)))) * (v.IVA/100)))
+ELSE
+CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' THEN
+v.Cantidad  * ((v.Costo - (v.Costo * (v.DescuentoProveedor/100))) + (((v.Costo - (v.Costo * (v.DescuentoProveedor/100)))) * (v.IVA/100)))
+END
+END
+END
+END Costo
+,CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+ELSE
+CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+(v.Cantidad * p.Sobres) *  v.PrecioVenta
+ELSE
+CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto'  THEN
+(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+ELSE
+CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' THEN
+v.Cantidad  *  v.PrecioVenta
+END
+END
+END
+END PrecioVenta
+,v.descuento
+,
+(
+(CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+ELSE
+CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+(v.Cantidad * p.Sobres) *  v.PrecioVenta
+ELSE
+CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto'  THEN
+(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+ELSE
+CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' THEN
+v.Cantidad  *  v.PrecioVenta
+END
+END
+END
+END)
+* 
+(v.descuento/100)) ValorDescuento,
+v.Efectivo,v.Tdebito,
+	v.NumBaucherDebito,v.Tcredito,v.NumBaucherCredito,v.Cambio,v.Total,
+	pr.DNI+'-'+pr.Nombre Proveedor,
+	c.DNI +'-'+c.Nombre Cliente,CONCAT(d.Estado,' - ',d.Codigo,' - ',d.Celular,' - ',
+	d.Nombre,' - ',d.Direccion,' - ',msj.DNI,' - ',msj.Nombre,' - ',d.ValorDomicilio) Domicilio, 
+	CONCAT(sp.Estado,' - ',sp.Codigo,' - ',c2.DNI,' - ',c2.Nombre) SistemaSeparado
+FROM 
+Venta v
+INNER JOIN Producto p ON p.Item = v.Producto
+INNER JOIN Proveedor pr ON pr.DNI = v.Proveedor
+INNER JOIN Cliente c ON c.Codigo = v.Cliente
+LEFT JOIN Domicilio d ON d.Codigo = v.Domicilio
+LEFT JOIN SistemaSeparado sp ON sp.Codigo = v.SistemaSeparado
+LEFT JOIN Cliente c2 ON c2.Codigo = sp.Cliente
+LEFT JOIN Mensajero msj ON msj.Codigo = d.Mensajero
+WHERE CONVERT(date,v.Fecha) BETWEEN @FechaIni AND @FechaFin
+	GO
 CREATE FUNCTION [dbo].[fnLeeClave] 
 (
     @clave VARCHAR(8000)
