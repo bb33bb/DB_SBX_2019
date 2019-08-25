@@ -636,7 +636,180 @@ ALTER PROCEDURE  [dbo].[sp_consultar_producto]
 	--	INNER JOIN Marca m ON m.Codigo = p.Marca
 	--	INNER JOIN Ubicacion ub ON ub.Codigo = p.Ubicacion
 	--	INNER JOIN SalidaPara slp ON slp.Codigo = p.Salida_para
-	--	WHERE p.Referencia = @v_buscar OR p.CodigoBarras = @v_buscar OR p.Nombre = @v_buscar AND p.Estado = 1
+	--	WHERE p.Referencia = @v_buscar OR p.CodigoBarras = @v_buscar OR p.Nombre = @v_buscar AND p.Estado = 
+
+
+GO
+
+USE [DB_SBX]
+GO
+/****** Object:  StoredProcedure [dbo].[SP_BUSCAR_VENTAS]    Script Date: 19/08/2019 09:19:45 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROC  [dbo].[SP_BUSCAR_VENTAS]
+@TipoBusq AS VARCHAR(20),
+@FechaInicio AS DATE,
+@FechaFin AS DATE,
+@Busqueda AS VARCHAR(MAX)
+AS
+IF(@Busqueda = '')
+BEGIN
+SELECT 
+ v.Codigo
+,V.Fecha
+,CONCAT(v.NombreDocumento,'-',v.ConsecutivoDocumento) Factura
+,p.Item
+,p.Nombre
+,p.Referencia
+,p.CodigoBarras
+,p.ModoVenta
+,v.UM
+,v.Cantidad
+,v.Costo 
+,v.PrecioVenta
+,v.descuento
+,v.PrecioVenta * v.descuento ValorDescuento
+,v.Tdebito
+,v.NumBaucherDebito
+,v.Tcredito
+,v.NumBaucherCredito
+,v.Total
+,v.Efectivo
+,v.Cambio
+,CONCAT(c.DNI,'-',c.Nombre) Cliente
+,ISNULL(v.Domicilio,'') Domicilio
+,CONCAT(us.Codigo,'-',us.NombreUsuario) Usuario
+FROM Venta v
+INNER JOIN Producto p ON p.Item = v.Producto
+INNER JOIN Cliente c ON c.Codigo = v.Cliente
+INNER JOIN Usuario us ON us.Codigo = v.Usuario
+WHERE  CONVERT(date,v.Fecha) BETWEEN @FechaInicio AND @FechaFin
+END
+ELSE
+BEGIN
+IF(@TipoBusq = 'Contiene')
+BEGIN
+SELECT 
+ v.Codigo
+,V.Fecha
+,CONCAT(v.NombreDocumento,'-',v.ConsecutivoDocumento) Factura
+,p.Item
+,p.Nombre
+,p.Referencia
+,p.CodigoBarras
+,p.ModoVenta
+,v.UM
+,v.Cantidad
+,v.Costo 
+,v.PrecioVenta
+,v.descuento
+,v.PrecioVenta * v.descuento ValorDescuento
+,v.Tdebito
+,v.NumBaucherDebito
+,v.Tcredito
+,v.NumBaucherCredito
+,v.Total
+,v.Efectivo
+,v.Cambio
+,CONCAT(c.DNI,'-',c.Nombre) Cliente
+,ISNULL(v.Domicilio,'') Domicilio
+,CONCAT(us.Codigo,'-',us.NombreUsuario) Usuario
+FROM Venta v
+INNER JOIN Producto p ON p.Item = v.Producto
+INNER JOIN Cliente c ON c.Codigo = v.Cliente
+INNER JOIN Usuario us ON us.Codigo = v.Usuario
+WHERE CONCAT(v.NombreDocumento,'-',v.ConsecutivoDocumento) LIKE @Busqueda+'%' 
+OR 
+Item LIKE CASE WHEN ISNUMERIC(@Busqueda) = 1 THEN @Busqueda ELSE 0 END 
+AND CONVERT(date,v.Fecha) BETWEEN @FechaInicio AND @FechaFin
+END
+ELSE
+BEGIN
+SELECT 
+ v.Codigo
+,V.Fecha
+,CONCAT(v.NombreDocumento,'-',v.ConsecutivoDocumento) Factura
+,p.Item
+,p.Nombre
+,p.Referencia
+,p.CodigoBarras
+,p.ModoVenta
+,v.UM
+,v.Cantidad
+,v.Costo 
+,v.PrecioVenta
+,v.descuento
+,v.PrecioVenta * v.descuento ValorDescuento
+,v.Tdebito
+,v.NumBaucherDebito
+,v.Tcredito
+,v.NumBaucherCredito
+,v.Total
+,v.Efectivo
+,v.Cambio
+,CONCAT(c.DNI,'-',c.Nombre) Cliente
+,ISNULL(v.Domicilio,'') Domicilio
+,CONCAT(us.Codigo,'-',us.NombreUsuario) Usuario
+FROM Venta v
+INNER JOIN Producto p ON p.Item = v.Producto
+INNER JOIN Cliente c ON c.Codigo = v.Cliente
+INNER JOIN Usuario us ON us.Codigo = v.Usuario
+WHERE CONCAT(v.NombreDocumento,'-',v.ConsecutivoDocumento) = @Busqueda
+OR 
+Item = CASE WHEN ISNUMERIC(@Busqueda) = 1 THEN @Busqueda ELSE 0 END
+AND CONVERT(date,v.Fecha) BETWEEN @FechaInicio AND @FechaFin
+END
+END
+
+--GO 24-08-2019
+--ver productos vencidos
+ALTER PROC  [dbo].[SP_PRODUCTOS_FECHA_VENCIMIENTO]
+@Producto AS VARCHAR(MAX)
+AS
+IF(ISNUMERIC(@Producto) = 1)
+BEGIN
+SELECT P.Item,p.Nombre,ISNULL(FV.FechaVecimiento,'') FechaVecimiento,
+CASE WHEN ISNULL(FV.FechaVecimiento,'') <= SYSDATETIME() AND ISNULL(FV.FechaVecimiento,'') != '1900-01-01' THEN
+'Vencido' 
+ELSE 
+CASE WHEN ISNULL(FV.FechaVecimiento,'') <= DATEADD(DAY,7,SYSDATETIME()) AND ISNULL(FV.FechaVecimiento,'') != '1900-01-01' THEN
+'Pronto a vencer'
+ELSE
+''
+END
+END Estado
+FROM Producto p
+LEFT JOIN FechasVencimiento fv ON fv.Item = p.Item
+WHERE p.Item = @Producto AND Estado = 1
+ORDER BY p.Item
+END
+ELSE
+BEGIN
+SELECT P.Item,p.Nombre,ISNULL(FV.FechaVecimiento,'') FechaVecimiento,
+CASE WHEN ISNULL(FV.FechaVecimiento,'') <= SYSDATETIME() AND ISNULL(FV.FechaVecimiento,'') != '1900-01-01' THEN
+'Vencido' 
+ELSE 
+CASE WHEN ISNULL(FV.FechaVecimiento,'') <= DATEADD(DAY,7,SYSDATETIME()) AND ISNULL(FV.FechaVecimiento,'') != '1900-01-01' THEN
+'Pronto a vencer'
+ELSE
+''
+END
+END Estado
+FROM Producto p
+LEFT JOIN FechasVencimiento fv ON fv.Item = p.Item
+WHERE p.Nombre LIKE @Producto+'%' AND Estado = 1
+ORDER BY p.Item
+END
+
+--GO -- 25/08/2019
+
+--INSERT INTO Modulo_permiso (Modulo,Permiso) VALUES(1,11)
+
+
+
+
 
 	
 
