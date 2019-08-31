@@ -807,6 +807,382 @@ END
 
 --INSERT INTO Modulo_permiso (Modulo,Permiso) VALUES(1,11)
 
+--go -- 31/08/2019
+
+	ALTER PROC  [dbo].[SP_GANACIAS_PERDIDAS]
+@FechaIni AS DATE,
+@FechaFin AS DATE,
+@tipoBusqueda AS VARCHAR(100),
+@Buscar AS VARCHAR(100)
+AS
+IF(@tipoBusqueda = 'Contiene')
+BEGIN
+	IF(ISNUMERIC(@Buscar) = 1)
+	BEGIN
+		SELECT 
+		v.Codigo,v.Fecha,CONCAT(v.NombreDocumento,'-',v.ConsecutivoDocumento) Factura
+		,p.Item
+		,p.Referencia
+		,p.CodigoBarras
+		,p.Nombre 
+		,v.ModoVenta
+		,v.UM
+		,v.Cantidad
+		,CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+		(v.Cantidad * p.SubCantidad) * (v.Costo)
+		ELSE
+		CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+		(v.Cantidad * p.Sobres) * (v.Costo)
+		ELSE
+		CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto' THEN
+		(v.Cantidad * p.SubCantidad) * (v.Costo)
+		ELSE
+		CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' OR v.UM = 'Bolsa' THEN
+		v.Cantidad  * (v.Costo)
+		ELSE
+		CASE WHEN v.ModoVenta = 'Desechable' AND v.UM != 'Bolsa' THEN
+		(v.Cantidad * p.SubCantidad) * (v.Costo)
+		END
+		END
+		END
+		END
+		END Costo
+		,CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+		(v.Cantidad * p.Sobres) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto'  THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' OR v.UM = 'Bolsa' THEN
+		v.Cantidad  *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Desechable' AND v.UM != 'Bolsa' THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		END
+		END
+		END
+		END
+		END PrecioVenta
+		,v.descuento
+		,
+		(
+		(CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+		(v.Cantidad * p.Sobres) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto'  THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' OR v.UM = 'Bolsa' THEN
+		v.Cantidad  *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Desechable' AND v.UM != 'Bolsa' THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		END
+		END
+		END
+		END
+		END)
+		* 
+		(v.descuento/100)) ValorDescuento,
+		v.Efectivo,v.Tdebito,
+			v.NumBaucherDebito,v.Tcredito,v.NumBaucherCredito,v.Cambio,v.Total,
+			pr.DNI+'-'+pr.Nombre Proveedor,
+			c.DNI +'-'+c.Nombre Cliente,CONCAT(d.Estado,' - ',d.Codigo,' - ',d.Celular,' - ',
+			d.Nombre,' - ',d.Direccion,' - ',msj.DNI,' - ',msj.Nombre,' - ',d.ValorDomicilio) Domicilio, 
+			CONCAT(sp.Estado,' - ',sp.Codigo,' - ',c2.DNI,' - ',c2.Nombre) SistemaSeparado
+		FROM 
+		Venta v
+		INNER JOIN Producto p ON p.Item = v.Producto
+		INNER JOIN Proveedor pr ON pr.DNI = v.Proveedor
+		INNER JOIN Cliente c ON c.Codigo = v.Cliente
+		LEFT JOIN Domicilio d ON d.Codigo = v.Domicilio
+		LEFT JOIN SistemaSeparado sp ON sp.Codigo = v.SistemaSeparado
+		LEFT JOIN Cliente c2 ON c2.Codigo = sp.Cliente
+		LEFT JOIN Mensajero msj ON msj.Codigo = d.Mensajero
+		WHERE CONVERT(date,v.Fecha) BETWEEN @FechaIni AND @FechaFin AND (p.Item LIKE @Buscar+'%' OR p.Nombre LIKE @Buscar+'%' OR p.Referencia LIKE @Buscar+'%' OR p.CodigoBarras LIKE @Buscar+'%')
+	END	
+	ELSE
+	BEGIN
+		SELECT 
+		v.Codigo,v.Fecha,CONCAT(v.NombreDocumento,'-',v.ConsecutivoDocumento) Factura
+		,p.Item
+		,p.Referencia
+		,p.CodigoBarras
+		,p.Nombre 
+		,v.ModoVenta
+		,v.UM
+		,v.Cantidad
+		,CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+		(v.Cantidad * p.SubCantidad) * (v.Costo)
+		ELSE
+		CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+		(v.Cantidad * p.Sobres) * (v.Costo)
+		ELSE
+		CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto' THEN
+		(v.Cantidad * p.SubCantidad) * (v.Costo)
+		ELSE
+		CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' OR v.UM = 'Bolsa' THEN
+		v.Cantidad  * (v.Costo)
+		ELSE
+		CASE WHEN v.ModoVenta = 'Desechable' AND v.UM != 'Bolsa' THEN
+		(v.Cantidad * p.SubCantidad) * (v.Costo)
+		END
+		END
+		END
+		END
+		END Costo
+		,CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+		(v.Cantidad * p.Sobres) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto'  THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' OR v.UM = 'Bolsa' THEN
+		v.Cantidad  *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Desechable' AND v.UM != 'Bolsa' THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		END
+		END
+		END
+		END
+		END PrecioVenta
+		,v.descuento
+		,
+		(
+		(CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+		(v.Cantidad * p.Sobres) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto'  THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' OR v.UM = 'Bolsa' THEN
+		v.Cantidad  *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Desechable' AND v.UM != 'Bolsa' THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		END
+		END
+		END
+		END
+		END)
+		* 
+		(v.descuento/100)) ValorDescuento,
+		v.Efectivo,v.Tdebito,
+			v.NumBaucherDebito,v.Tcredito,v.NumBaucherCredito,v.Cambio,v.Total,
+			pr.DNI+'-'+pr.Nombre Proveedor,
+			c.DNI +'-'+c.Nombre Cliente,CONCAT(d.Estado,' - ',d.Codigo,' - ',d.Celular,' - ',
+			d.Nombre,' - ',d.Direccion,' - ',msj.DNI,' - ',msj.Nombre,' - ',d.ValorDomicilio) Domicilio, 
+			CONCAT(sp.Estado,' - ',sp.Codigo,' - ',c2.DNI,' - ',c2.Nombre) SistemaSeparado
+		FROM 
+		Venta v
+		INNER JOIN Producto p ON p.Item = v.Producto
+		INNER JOIN Proveedor pr ON pr.DNI = v.Proveedor
+		INNER JOIN Cliente c ON c.Codigo = v.Cliente
+		LEFT JOIN Domicilio d ON d.Codigo = v.Domicilio
+		LEFT JOIN SistemaSeparado sp ON sp.Codigo = v.SistemaSeparado
+		LEFT JOIN Cliente c2 ON c2.Codigo = sp.Cliente
+		LEFT JOIN Mensajero msj ON msj.Codigo = d.Mensajero
+		WHERE CONVERT(date,v.Fecha) BETWEEN @FechaIni AND @FechaFin AND (p.Nombre LIKE @Buscar+'%' OR p.Referencia LIKE @Buscar+'%' OR p.CodigoBarras LIKE @Buscar+'%')
+	END
+END
+ELSE
+BEGIN
+		IF(ISNUMERIC(@Buscar) = 1)
+		BEGIN
+		SELECT 
+		v.Codigo,v.Fecha,CONCAT(v.NombreDocumento,'-',v.ConsecutivoDocumento) Factura
+		,p.Item
+		,p.Referencia
+		,p.CodigoBarras
+		,p.Nombre 
+		,v.ModoVenta
+		,v.UM
+		,v.Cantidad
+		,CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+		(v.Cantidad * p.SubCantidad) * (v.Costo)
+		ELSE
+		CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+		(v.Cantidad * p.Sobres) * (v.Costo)
+		ELSE
+		CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto' THEN
+		(v.Cantidad * p.SubCantidad) * (v.Costo)
+		ELSE
+		CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' OR v.UM = 'Bolsa' THEN
+		v.Cantidad  * (v.Costo)
+		ELSE
+		CASE WHEN v.ModoVenta = 'Desechable' AND v.UM != 'Bolsa' THEN
+		(v.Cantidad * p.SubCantidad) * (v.Costo)
+		END
+		END
+		END
+		END
+		END Costo
+		,CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+		(v.Cantidad * p.Sobres) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto'  THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' OR v.UM = 'Bolsa' THEN
+		v.Cantidad  *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Desechable' AND v.UM != 'Bolsa' THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		END
+		END
+		END
+		END
+		END PrecioVenta
+		,v.descuento
+		,
+		(
+		(CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+		(v.Cantidad * p.Sobres) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto'  THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' OR v.UM = 'Bolsa' THEN
+		v.Cantidad  *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Desechable' AND v.UM != 'Bolsa' THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		END
+		END
+		END
+		END
+		END)
+		* 
+		(v.descuento/100)) ValorDescuento,
+		v.Efectivo,v.Tdebito,
+			v.NumBaucherDebito,v.Tcredito,v.NumBaucherCredito,v.Cambio,v.Total,
+			pr.DNI+'-'+pr.Nombre Proveedor,
+			c.DNI +'-'+c.Nombre Cliente,CONCAT(d.Estado,' - ',d.Codigo,' - ',d.Celular,' - ',
+			d.Nombre,' - ',d.Direccion,' - ',msj.DNI,' - ',msj.Nombre,' - ',d.ValorDomicilio) Domicilio, 
+			CONCAT(sp.Estado,' - ',sp.Codigo,' - ',c2.DNI,' - ',c2.Nombre) SistemaSeparado
+		FROM 
+		Venta v
+		INNER JOIN Producto p ON p.Item = v.Producto
+		INNER JOIN Proveedor pr ON pr.DNI = v.Proveedor
+		INNER JOIN Cliente c ON c.Codigo = v.Cliente
+		LEFT JOIN Domicilio d ON d.Codigo = v.Domicilio
+		LEFT JOIN SistemaSeparado sp ON sp.Codigo = v.SistemaSeparado
+		LEFT JOIN Cliente c2 ON c2.Codigo = sp.Cliente
+		LEFT JOIN Mensajero msj ON msj.Codigo = d.Mensajero
+		WHERE CONVERT(date,v.Fecha) BETWEEN @FechaIni AND @FechaFin AND (p.Item = @Buscar OR p.Nombre = @Buscar OR p.Referencia = @Buscar OR p.CodigoBarras = @Buscar)
+	END	
+	ELSE
+	BEGIN
+		SELECT 
+		v.Codigo,v.Fecha,CONCAT(v.NombreDocumento,'-',v.ConsecutivoDocumento) Factura
+		,p.Item
+		,p.Referencia
+		,p.CodigoBarras
+		,p.Nombre 
+		,v.ModoVenta
+		,v.UM
+		,v.Cantidad
+		,CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+		(v.Cantidad * p.SubCantidad) * (v.Costo)
+		ELSE
+		CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+		(v.Cantidad * p.Sobres) * (v.Costo)
+		ELSE
+		CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto' THEN
+		(v.Cantidad * p.SubCantidad) * (v.Costo)
+		ELSE
+		CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' OR v.UM = 'Bolsa' THEN
+		v.Cantidad  * (v.Costo)
+		ELSE
+		CASE WHEN v.ModoVenta = 'Desechable' AND v.UM != 'Bolsa' THEN
+		(v.Cantidad * p.SubCantidad) * (v.Costo)
+		END
+		END
+		END
+		END
+		END Costo
+		,CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+		(v.Cantidad * p.Sobres) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto'  THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' OR v.UM = 'Bolsa' THEN
+		v.Cantidad  *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Desechable' AND v.UM != 'Bolsa' THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		END
+		END
+		END
+		END
+		END PrecioVenta
+		,v.descuento
+		,
+		(
+		(CASE WHEN v.ModoVenta = 'Multi' AND UM = 'UND P' THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Multi' AND UM = 'Sobre' THEN
+		(v.Cantidad * p.Sobres) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Pesaje' AND v.UM != 'Bulto'  THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.UM = 'UND' OR v.UM = 'Caja' OR v.UM = 'Bulto' OR v.UM = 'Bolsa' THEN
+		v.Cantidad  *  v.PrecioVenta
+		ELSE
+		CASE WHEN v.ModoVenta = 'Desechable' AND v.UM != 'Bolsa' THEN
+		(v.Cantidad * p.SubCantidad) *  v.PrecioVenta
+		END
+		END
+		END
+		END
+		END)
+		* 
+		(v.descuento/100)) ValorDescuento,
+		v.Efectivo,v.Tdebito,
+			v.NumBaucherDebito,v.Tcredito,v.NumBaucherCredito,v.Cambio,v.Total,
+			pr.DNI+'-'+pr.Nombre Proveedor,
+			c.DNI +'-'+c.Nombre Cliente,CONCAT(d.Estado,' - ',d.Codigo,' - ',d.Celular,' - ',
+			d.Nombre,' - ',d.Direccion,' - ',msj.DNI,' - ',msj.Nombre,' - ',d.ValorDomicilio) Domicilio, 
+			CONCAT(sp.Estado,' - ',sp.Codigo,' - ',c2.DNI,' - ',c2.Nombre) SistemaSeparado
+		FROM 
+		Venta v
+		INNER JOIN Producto p ON p.Item = v.Producto
+		INNER JOIN Proveedor pr ON pr.DNI = v.Proveedor
+		INNER JOIN Cliente c ON c.Codigo = v.Cliente
+		LEFT JOIN Domicilio d ON d.Codigo = v.Domicilio
+		LEFT JOIN SistemaSeparado sp ON sp.Codigo = v.SistemaSeparado
+		LEFT JOIN Cliente c2 ON c2.Codigo = sp.Cliente
+		LEFT JOIN Mensajero msj ON msj.Codigo = d.Mensajero
+		WHERE CONVERT(date,v.Fecha) BETWEEN @FechaIni AND @FechaFin AND (p.Nombre = @Buscar OR p.Referencia = @Buscar OR p.CodigoBarras = @Buscar)
+	END
+END
+
+
 
 
 
